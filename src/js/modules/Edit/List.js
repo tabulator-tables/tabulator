@@ -279,35 +279,35 @@ export default class Edit{
 	}
 	
 	_inputKeyDown(e){
-		switch(e.keyCode){
+		switch(e.key){
 			
-			case 38: //up arrow
+			case "ArrowUp":
 				this._keyUp(e);
 				break;
 			
-			case 40: //down arrow
+			case "ArrowDown":
 				this._keyDown(e);
 				break;
 			
-			case 37: //left arrow
-			case 39: //right arrow
+			case "ArrowLeft":
+			case "ArrowRight":
 				this._keySide(e);
 				break;
 			
-			case 13: //enter
+			case "Enter":
 				this._keyEnter();
 				break;
 			
-			case 27: //escape
+			case "Escape":
 				this._keyEsc();
 				break;
 			
-			case 36: //home
-			case 35: //end
+			case "Home":
+			case "End":
 				this._keyHomeEnd(e);
 				break;
 			
-			case 9: //tab
+			case "Tab":
 				this._keyTab(e);
 				break;
 			
@@ -317,13 +317,13 @@ export default class Edit{
 	}
 	
 	_inputKeyUp(e){
-		switch(e.keyCode){
-			case 38: //up arrow
-			case 37: //left arrow
-			case 39: //up arrow
-			case 40: //right arrow
-			case 13: //enter
-			case 27: //escape
+		switch(e.key){
+			case "ArrowUp":
+			case "ArrowLeft":
+			case "ArrowRight":
+			case "ArrowDown":
+			case "Enter":
+			case "Escape":
 				break;
 			
 			default:
@@ -432,8 +432,8 @@ export default class Edit{
 			e.preventDefault();
 			// }
 			
-			if(e.keyCode >= 38 && e.keyCode <= 90){
-				this._scrollToValue(e.keyCode);
+			if(e.key.length === 1){
+				this._scrollToValue(e.key.toUpperCase().charCodeAt(0));
 			}
 		}
 	}
