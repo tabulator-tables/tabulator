@@ -1,4 +1,5 @@
 import Keybindings from "../../../src/js/modules/Keybindings/Keybindings";
+import Tabulator from "../../../src/js/core/Tabulator";
 
 describe("Keybindings module", () => {
     /** @type {Keybindings} */
@@ -99,6 +100,25 @@ describe("Keybindings module", () => {
         jest.clearAllMocks();
         jest.restoreAllMocks();
     });
+
+	it("should register keybindings table option during construction", () => {
+		const testActionFunc = jest.fn();
+        const mod = new Keybindings({
+			...mockTable,
+			options: {
+				keybindings: {
+					testAction: "ctrl + q"
+				}
+			},
+		});
+		Object.assign(Keybindings.actions, {
+            testAction: testActionFunc,
+		})
+		mod.initialize();
+		mod.keydownBinding(new KeyboardEvent("keydown", { key: "q", ctrlKey: true }));
+		mod.keyupBinding(new KeyboardEvent("keyup", { key: "q", ctrlKey: true }));
+		expect(testActionFunc).toHaveBeenCalled();
+	})
     
     it("should initialize watchKeys and pressedKeys as empty when keybindings disabled", () => {
         // With keybindings:false, the module should initialize empty structures
