@@ -1,5 +1,4 @@
 import Keybindings from "../../../src/js/modules/Keybindings/Keybindings";
-import Tabulator from "../../../src/js/core/Tabulator";
 
 describe("Keybindings module", () => {
     /** @type {Keybindings} */
