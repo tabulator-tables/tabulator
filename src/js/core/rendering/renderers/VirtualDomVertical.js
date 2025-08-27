@@ -352,16 +352,20 @@ export default class VirtualDomVertical extends Renderer{
 				}
 			}
 
+			//adjust row height to match average of rendered elements
+			this.vDomRowHeight = Math.floor((rowsHeight + topPadHeight) / totalRowsRendered);
+			
 			if(!position){
 				this.vDomTopPad = 0;
-				//adjust row height to match average of rendered elements
-				this.vDomRowHeight = Math.floor((rowsHeight + topPadHeight) / totalRowsRendered);
 				this.vDomBottomPad = this.vDomRowHeight * (rowsCount - this.vDomBottom -1);
 
 				this.vDomScrollHeight = topPadHeight + rowsHeight + this.vDomBottomPad - containerHeight;
 			}else {
 				this.vDomTopPad = !forceMove ? this.scrollTop - topPadHeight : (this.vDomRowHeight * this.vDomTop) + offset;
-				this.vDomBottomPad = this.vDomBottom == rowsCount-1 ? 0 : Math.max(this.vDomScrollHeight - this.vDomTopPad - rowsHeight - topPadHeight, 0);
+				this.vDomBottomPad = this.vDomBottom == rowsCount-1 ? 0 : this.vDomRowHeight * (rowsCount - this.vDomBottom -1);
+				
+				// Recalculate scroll height to ensure correct bottom padding
+				this.vDomScrollHeight = topPadHeight + rowsHeight + this.vDomBottomPad - containerHeight;
 			}
 			
 			element.style.paddingTop = this.vDomTopPad+"px";

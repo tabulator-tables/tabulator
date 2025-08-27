@@ -334,6 +334,16 @@ export default class RowManager extends CoreFeature{
 				data.reverse();
 			}
 			
+			// Store initial state for large batch additions (issue #4730)
+			var initialScrollInfo;
+			if(data.length >= 100 && this.renderer && this.renderer.elementVertical){
+				initialScrollInfo = {
+					scrollTop: this.renderer.elementVertical.scrollTop,
+					scrollHeight: this.renderer.elementVertical.scrollHeight,
+					clientHeight: this.renderer.elementVertical.clientHeight
+				};
+			}
+			
 			data.forEach((item, i) => {
 				var row = this.addRow(item, pos, index, true);
 				rows.push(row);
@@ -343,6 +353,32 @@ export default class RowManager extends CoreFeature{
 			this.refreshActiveData(refreshDisplayOnly ? "displayPipeline" : false, false, true);
 			
 			this.regenerateRowPositions();
+			
+			// Preserve relative scroll position for large batch additions (issue #4730)
+			if(initialScrollInfo && !pos && data.length >= 100){
+				var newScrollHeight = this.renderer.elementVertical.scrollHeight;
+				var newClientHeight = this.renderer.elementVertical.clientHeight;
+				
+				if(newScrollHeight > initialScrollInfo.scrollHeight){
+					var initialMaxScroll = Math.max(initialScrollInfo.scrollHeight - initialScrollInfo.clientHeight, 0);
+					var newMaxScroll = Math.max(newScrollHeight - newClientHeight, 0);
+					
+					if(initialMaxScroll > 0 && newMaxScroll > 0){
+						// Don't use relative positioning if we were at the exact bottom
+						// This prevents the scrollbar from appearing to be at the bottom when more content exists
+						if(Math.abs(initialScrollInfo.scrollTop - initialMaxScroll) < 2){
+							// We were at the bottom, but don't stick exactly to new bottom
+							// Leave some space to indicate there's more content
+							this.renderer.elementVertical.scrollTop = Math.max(0, newMaxScroll - 50);
+						} else {
+							// Use relative positioning for middle positions
+							var relativePosition = initialScrollInfo.scrollTop / initialMaxScroll;
+							var newScrollTop = relativePosition * newMaxScroll;
+							this.renderer.elementVertical.scrollTop = newScrollTop;
+						}
+					}
+				}
+			}
 			
 			if(this.displayRowsCount){
 				this._clearPlaceholder();
