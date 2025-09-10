@@ -201,13 +201,28 @@ export default class Range extends CoreFeature{
 			
 			this.element.classList.add("tabulator-range-active");
 			// this.element.classList.toggle("tabulator-range-active", this === this.rangeManager.activeRange);
+			
+			let occupiedFrozenColumnsWidth = 0;
+			this.rangeManager.getTableColumns().forEach((column) => {
+				if (this.occupiesColumn(column) && column.definition.frozen){
+					occupiedFrozenColumnsWidth += column.width;
+				}
+			});
 
 			if(this.table.rtl){
+				const calculatedRangeWidth = Math.max(
+					topLeftCellEl.offsetLeft + topLeftCellEl.offsetWidth - bottomRightCellEl.offsetLeft,
+					occupiedFrozenColumnsWidth,
+				);
 				this.element.style.right = topLeftRowEl.offsetWidth - topLeftCellEl.offsetLeft - topLeftCellEl.offsetWidth + "px";
-				this.element.style.width = topLeftCellEl.offsetLeft + topLeftCellEl.offsetWidth - bottomRightCellEl.offsetLeft + "px";
+				this.element.style.width = calculatedRangeWidth + "px";
 			}else{
+				const calculatedRangeWidth = Math.max(
+					bottomRightCellEl.offsetLeft + bottomRightCellEl.offsetWidth - topLeftCellEl.offsetLeft,
+					occupiedFrozenColumnsWidth,
+				);
 				this.element.style.left = topLeftRowEl.offsetLeft + topLeftCellEl.offsetLeft + "px";
-				this.element.style.width = bottomRightCellEl.offsetLeft + bottomRightCellEl.offsetWidth - topLeftCellEl.offsetLeft + "px";
+				this.element.style.width = calculatedRangeWidth + "px";
 			}
 			
 			this.element.style.top = topLeftRowEl.offsetTop + "px";
