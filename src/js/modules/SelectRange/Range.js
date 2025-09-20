@@ -163,7 +163,11 @@ export default class Range extends CoreFeature{
 		var _vDomTop = this.table.rowManager.renderer.vDomTop,
 		_vDomBottom = this.table.rowManager.renderer.vDomBottom,
 		_vDomLeft = this.table.columnManager.renderer.leftCol,
-		_vDomRight = this.table.columnManager.renderer.rightCol,		
+		_vDomRight = this.table.columnManager.renderer.rightCol,
+		frozenLeftColumns = this.table.modules.frozenColumns.leftColumns,
+		frozenLeft = frozenLeftColumns.length,
+		frozenRightColumns = this.table.modules.frozenColumns.rightColumns,
+		frozenRight = frozenRightColumns.length,
 		top, bottom, left, right, topLeftCell, bottomRightCell, topLeftCellEl, bottomRightCellEl, topLeftRowEl, bottomRightRowEl;
 
 		if(this.table.options.renderHorizontal === "virtual" && this.rangeManager.rowHeader) {
@@ -185,12 +189,16 @@ export default class Range extends CoreFeature{
 		if (_vDomRight == null) {
 			_vDomRight = Infinity;
 		}
+
+		if (frozenLeft > 0 && frozenLeftColumns[0].isRowHeader === true) {
+			frozenLeft -= 1;
+		}
 		
 		if (this.overlaps(_vDomLeft, _vDomTop, _vDomRight, _vDomBottom)) {
 			top = Math.max(this.top, _vDomTop);
 			bottom = Math.min(this.bottom, _vDomBottom);
 			left = Math.max(this.left, _vDomLeft);
-			right = Math.min(this.right, _vDomRight);
+			right = Math.min(this.right, _vDomRight + frozenLeft + frozenRight);
 			
 			topLeftCell = this.rangeManager.getCell(top, left);
 			bottomRightCell = this.rangeManager.getCell(bottom, right);
