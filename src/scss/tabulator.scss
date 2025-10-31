@@ -764,6 +764,12 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 				border:4px solid #D00;
 				color:#590000;
 			}
+
+			//success message
+			&.tabulator-alert-state-success {
+				border:4px solid #21ea71;
+				color: #3dc170;
+			}
 		}
 	}
 }
