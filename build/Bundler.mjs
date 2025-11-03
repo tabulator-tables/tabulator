@@ -59,25 +59,25 @@ export default class Bundler{
 		console.log("Building Dev Package Bundles: ", env);
 		switch(env){
 			case "css":
-			this.bundleCSS(false);
-			break;
+				this.bundleCSS(false);
+				break;
 			
 			case "esm":
-			this.bundleESM(false);
-			break;
+				this.bundleESM(false);
+				break;
 			
 			case "umd":
-			this.bundleUMD(false);
-			break;
+				this.bundleUMD(false);
+				break;
 			
 			case "wrappers":
-			this.buildWrappers();
-			break;
+				this.buildWrappers();
+				break;
 			
 			default:
-			this.bundleCSS(false);
-			this.bundleESM(false);
-			break;
+				this.bundleCSS(false);
+				this.bundleESM(false);
+				break;
 		}
 	}
 	
@@ -132,7 +132,19 @@ export default class Bundler{
 						extract: true,
 						minimize: minify,
 						sourceMap: true,
-						plugins: [require('postcss-prettify')]
+						plugins: [require('postcss-prettify')],
+						use: {
+							sass: {
+								silenceDeprecations: [
+									"import",
+									"color-functions",
+									"global-builtin",
+									"legacy-js-api",
+									"slash-div",
+									"function-units",
+								]
+							}
+						}
 					}),
 				],
 				onwarn:this._suppressUnnecessaryWarnings.bind(this),

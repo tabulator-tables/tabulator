@@ -10,3 +10,6 @@ npm-debug.log
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# VS Code
+.vscode/
