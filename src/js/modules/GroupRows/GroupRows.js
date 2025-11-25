@@ -70,6 +70,7 @@ export default class GroupRows extends Module{
 			this.subscribe("rows-sample", this.rowSample.bind(this));
 			
 			this.subscribe("render-virtual-fill", this.virtualRenderFill.bind(this));
+			this.subscribe("table-layout", this.virtualRenderFill.bind(this));
 			
 			this.registerDisplayHandler(this.displayHandler, 20);
 			

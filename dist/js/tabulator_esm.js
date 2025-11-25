@@ -1,4 +1,4 @@
-/* Tabulator v6.3.0 (c) Oliver Folkerd 2025 */
+/* Tabulator v6.3.1 (c) Oliver Folkerd 2025 */
 class CoreFeature{
 
 	constructor(table){
@@ -2968,10 +2968,15 @@ class Column extends CoreFeature{
 			
 			if(maxWidth){
 				var setTo = maxWidth + 1;
-				if (this.maxInitialWidth && !force) {
-					setTo = Math.min(setTo, this.maxInitialWidth);
+				
+				if(force){
+					this.setWidth(setTo);
+				}else {
+					if (this.maxInitialWidth && !force) {
+						setTo = Math.min(setTo, this.maxInitialWidth);
+					}
+					this.setWidthActual(setTo);
 				}
-				this.setWidthActual(setTo);
 			}
 		}
 	}
@@ -4395,6 +4400,7 @@ class DataTree extends Module{
 
 			this.subscribe("row-init", this.initializeRow.bind(this));
 			this.subscribe("row-layout-after", this.layoutRow.bind(this));
+			this.subscribe("row-deleting", this.rowDeleting.bind(this));
 			this.subscribe("row-deleted", this.rowDelete.bind(this),0);
 			this.subscribe("row-data-changed", this.rowDataChanged.bind(this), 10);
 			this.subscribe("cell-value-updated", this.cellValueChanged.bind(this));
@@ -4732,6 +4738,18 @@ class DataTree extends Module{
 		}
 
 		return output;
+	}
+
+	rowDeleting(row){
+		var config = row.modules.dataTree;
+
+		if (config && config.children && Array.isArray(config.children)){
+			config.children.forEach((childRow) => {
+				if(childRow instanceof Row){
+					childRow.wipe();
+				}
+			});
+		}
 	}
 
 	rowDelete(row){
@@ -5250,7 +5268,6 @@ class Download extends Module{
 		this.registerTableOption("downloadEncoder", function(data, mimeType){
 			return new Blob([data],{type:mimeType});
 		}); //function to manipulate download data
-		// this.registerTableOption("downloadReady", undefined); //warn of function deprecation
 		this.registerTableOption("downloadConfig", {}); //download config
 		this.registerTableOption("downloadRowRange", "active"); //restrict download to active rows only
 
@@ -5266,7 +5283,7 @@ class Download extends Module{
 	}
 
 	deprecatedOptionsCheck(){
-		// this.deprecationCheck("downloadReady", "downloadEncoder");
+
 	}	
 
 	///////////////////////////////////
@@ -12352,6 +12369,7 @@ class GroupRows extends Module{
 			this.subscribe("rows-sample", this.rowSample.bind(this));
 			
 			this.subscribe("render-virtual-fill", this.virtualRenderFill.bind(this));
+			this.subscribe("table-layout", this.virtualRenderFill.bind(this));
 			
 			this.registerDisplayHandler(this.displayHandler, 20);
 			
@@ -17826,7 +17844,7 @@ class ReactiveData extends Module{
 					enumerable: true,
 					configurable:true,
 					writable:true,
-					value: this.origFuncs.key,
+					value: this.origFuncs[key],
 				});
 			}
 		}
@@ -18614,7 +18632,7 @@ class ResizeTable extends Module{
 	
 	initializeVisibilityObserver(){
 		this.visibilityObserver = new IntersectionObserver((entries) => {
-			this.visible = entries[0].isIntersecting;
+			this.visible = entries[entries.length - 1].isIntersecting;
 			
 			if(!this.initialized){
 				this.initialized = true;
@@ -19736,8 +19754,8 @@ class Range extends CoreFeature{
 		this.right = 0;
 		
 		this.table = table;
-		this.start = {row:0, col:0};
-		this.end = {row:0, col:0};
+		this.start = {row:undefined, col:undefined};
+		this.end = {row:undefined, col:undefined};
 
 		if(this.rangeManager.rowHeader){
 			this.left = 1;
@@ -20668,13 +20686,15 @@ class SelectRange extends Module {
 	///////////////////////////////////
 	
 	keyNavigate(dir, e){
-		if(this.navigate(false, false, dir));
-		e.preventDefault();
+		if(this.navigate(false, false, dir)){
+			e.preventDefault();
+		}
 	}
 	
 	keyNavigateRange(e, dir, jump, expand){
-		if(this.navigate(jump, expand, dir));
-		e.preventDefault();
+		if(this.navigate(jump, expand, dir)){
+			e.preventDefault();
+		}
 	}
 	
 	navigate(jump, expand, dir) {
@@ -20792,9 +20812,8 @@ class SelectRange extends Module {
 			}
 
 			this.layoutElement();
-			
-			return true;
 		}
+		return true;
 	}
 	
 	rangeRemoved(removed){
@@ -20808,7 +20827,7 @@ class SelectRange extends Module {
 			}
 		}
 		
-		this.layoutElement();
+		this.layoutElement(true);
 	}
 	
 	findJumpRow(column, rows, reverse, emptyStart, emptySide){
@@ -20950,11 +20969,11 @@ class SelectRange extends Module {
 		}
 		
 		if (event.shiftKey) {
-			this.activeRange.setBounds(false, element);
+			this.activeRange.setBounds(false, element, true);
 		} else if (event.ctrlKey) {
-			this.addRange().setBounds(element);
+			this.addRange().setBounds(element, undefined, true);
 		} else {
-			this.resetRanges().setBounds(element);
+			this.resetRanges().setBounds(element, undefined, true);
 		}
 	}
 	
@@ -23737,7 +23756,7 @@ class VirtualDomHorizontal extends Renderer{
 			if(column.visible){
 				if(!column.modules.frozen){			
 					width = column.getWidth();
-
+					
 					config.leftPos = colPos;
 					config.rightPos = colPos + width;
 					
@@ -23795,7 +23814,7 @@ class VirtualDomHorizontal extends Renderer{
 				rowFrag.appendChild(cell.getElement());
 			});
 			row.element.appendChild(rowFrag);
-
+			
 			row.cells.forEach((cell) => {
 				cell.cellRendered();
 			});
@@ -23808,7 +23827,11 @@ class VirtualDomHorizontal extends Renderer{
 	
 	reinitializeColumnWidths(columns){
 		for(let i = this.leftCol; i <= this.rightCol; i++){
-			this.columns[i].reinitializeWidth();
+			let col = this.columns[i];
+			
+			if(col){
+				col.reinitializeWidth();
+			}
 		}
 	}
 	
@@ -23896,11 +23919,11 @@ class VirtualDomHorizontal extends Renderer{
 	reinitializeRows(){
 		var visibleRows = this.getVisibleRows(),
 		otherRows = this.table.rowManager.getRows().filter(row => !visibleRows.includes(row));
-
+		
 		visibleRows.forEach((row) => {
 			this.reinitializeRow(row, true);
 		});
-
+		
 		otherRows.forEach((row) =>{
 			row.deinitialize();
 		});
@@ -23947,7 +23970,7 @@ class VirtualDomHorizontal extends Renderer{
 		working = true;
 		
 		while(working){
-
+			
 			let column = this.columns[this.rightCol + 1];
 			
 			if(column){
@@ -23965,7 +23988,7 @@ class VirtualDomHorizontal extends Renderer{
 					this.fitDataColActualWidthCheck(column);
 					
 					this.rightCol++; // Don't move this below the >= check below
-
+					
 					this.getVisibleRows().forEach((row) => {
 						if(row.type !== "group"){
 							row.modules.vdomHoz.rightCol = this.rightCol;
@@ -24010,7 +24033,7 @@ class VirtualDomHorizontal extends Renderer{
 					});
 					
 					this.leftCol--; // don't move this below the <= check below
-
+					
 					this.getVisibleRows().forEach((row) => {
 						if(row.type !== "group"){
 							row.modules.vdomHoz.leftCol = this.leftCol;
@@ -24068,7 +24091,7 @@ class VirtualDomHorizontal extends Renderer{
 					
 					this.vDomPadRight += column.getWidth();
 					this.rightCol --;
-
+					
 					this.getVisibleRows().forEach((row) => {
 						if(row.type !== "group"){
 							row.modules.vdomHoz.rightCol = this.rightCol;
@@ -24090,7 +24113,7 @@ class VirtualDomHorizontal extends Renderer{
 	removeColLeft(){
 		var changes = false,
 		working = true;
-
+		
 		while(working){
 			let column = this.columns[this.leftCol];
 			
@@ -24112,7 +24135,7 @@ class VirtualDomHorizontal extends Renderer{
 					
 					this.vDomPadLeft += column.getWidth();
 					this.leftCol ++;
-
+					
 					this.getVisibleRows().forEach((row) => {
 						if(row.type !== "group"){
 							row.modules.vdomHoz.leftCol = this.leftCol;
@@ -24158,17 +24181,17 @@ class VirtualDomHorizontal extends Renderer{
 				leftCol:this.leftCol,
 				rightCol:this.rightCol,
 			};
-
+			
 			if(this.table.modules.frozenColumns){
 				this.table.modules.frozenColumns.leftColumns.forEach((column) => {
 					this.appendCell(row, column);
 				});
 			}
-
+			
 			for(let i = this.leftCol; i <= this.rightCol; i++){
 				this.appendCell(row, this.columns[i]);
 			}
-
+			
 			if(this.table.modules.frozenColumns){
 				this.table.modules.frozenColumns.rightColumns.forEach((column) => {
 					this.appendCell(row, column);
@@ -24192,7 +24215,7 @@ class VirtualDomHorizontal extends Renderer{
 				
 				var rowEl = row.getElement();
 				while(rowEl.firstChild) rowEl.removeChild(rowEl.firstChild);
-
+				
 				this.initializeRow(row);
 			}
 		}
@@ -26640,9 +26663,9 @@ class RowManager extends CoreFeature{
 				this.layoutRefresh(true);
 				
 				// handle resized columns
-				if(this.table.modExists("groupRows")) {
-					this.table.modules.groupRows.virtualRenderFill();
-				}
+				// if(this.table.modExists("groupRows")) {
+				// 	this.table.modules.groupRows.virtualRenderFill();
+				// }
 			}
 		}else {
 			this.renderEmptyScroll();
@@ -26777,10 +26800,14 @@ class RowManager extends CoreFeature{
 			//check if the table has changed size when dealing with variable height tables
 			if(!this.fixedHeight && initialHeight != this.element.clientHeight){
 				resized = true;
-				if(this.subscribed("table-resize")){
-					this.dispatch("table-resize");
-				}else {
-					this.redraw();
+				if(!this.redrawing){ // prevent recursive redraws		
+					this.redrawing = true;
+					if(this.subscribed("table-resize")){
+						this.dispatch("table-resize");
+					}else {
+						this.redraw();
+					}
+					this.redrawing = false;
 				}
 			}
 			
@@ -27187,8 +27214,9 @@ class InteractionManager extends CoreFeature {
 		var keys = Object.keys(targets).reverse(),
 		listener = this.listeners[type],
 		matches = {},
+		output = {},
 		targetMatches = {};
-		
+	
 		for(let key of keys){
 			let component,
 			target = targets[key],
@@ -27243,8 +27271,14 @@ class InteractionManager extends CoreFeature {
 		}
 		
 		this.previousTargets = targetMatches;
+
+		//reverse order keys are set in so events trigger in correct sequence
+		Object.keys(targets).forEach((key) => {
+			let value = matches[key];
+			output[key] = value;
+		});
 		
-		return matches;
+		return output;
 	}
 	
 	triggerEvents(type, e, targets){
@@ -28985,6 +29019,7 @@ class Tabulator extends ModuleBinder{
 		//clear DOM
 		while(element.firstChild) element.removeChild(element.firstChild);
 		element.classList.remove("tabulator");
+		element.removeAttribute("tabulator-layout");
 
 		this.externalEvents.dispatch("tableDestroyed");
 	}
