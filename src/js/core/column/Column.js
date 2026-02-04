@@ -1,6 +1,7 @@
 import CoreFeature from '../CoreFeature.js';
 import ColumnComponent from './ColumnComponent.js';
 import defaultOptions from './defaults/options.js';
+import helpers from '../tools/Helpers.js';
 
 import Cell from '../cell/Cell.js';
 
@@ -750,7 +751,7 @@ export default class Column extends CoreFeature{
 	}
 	
 	getHeight(){
-		return Math.ceil(this.element.getBoundingClientRect().height);
+		return helpers.getCorrectedDimensions(this.element, 'height');
 	}
 	
 	setMinWidth(minWidth){
