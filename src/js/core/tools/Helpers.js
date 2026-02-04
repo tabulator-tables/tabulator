@@ -67,7 +67,7 @@ export default class Helpers{
 	static getCorrectedDimensions(element, dimension) {
 		if (!element) return 0;
 		const rect = element.getBoundingClientRect();
-		const scaleFactors = getTransformScaleFactors(element);
+		const scaleFactors = Helpers.getTransformScaleFactors(element);
 
 		switch(dimension) {
 			case 'height':
