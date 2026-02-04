@@ -1,4 +1,4 @@
-/* Tabulator v6.3.1 (c) Oliver Folkerd 2025 */
+/* Tabulator v6.3.1 (c) Oliver Folkerd 2026 */
 class CoreFeature{
 
 	constructor(table){
@@ -203,6 +203,65 @@ class Helpers{
 		}
 
 		return clone;
+	}
+
+	static getCorrectedDimensions(element, dimension) {
+		if (!element) return 0;
+		const rect = element.getBoundingClientRect();
+		const scaleFactors = Helpers.getTransformScaleFactors(element);
+
+		switch(dimension) {
+			case 'height':
+				return Math.ceil(rect.height / scaleFactors.y);
+			case 'width':
+				return Math.ceil(rect.width / scaleFactors.x);
+			default:
+				return rect;
+		}
+	}
+
+	static getTransformScaleFactors(element) {
+		let scaleX = 1, scaleY = 1;
+		let current = element;
+
+		while (current && current !== document.body) {
+			const style = window.getComputedStyle(current);
+			const transform = style.transform;
+
+			if (transform && transform !== 'none') {
+				const matrix = transform.match(/matrix\(([^)]+)\)/);
+				const matrix3d = transform.match(/matrix3d\(([^)]+)\)/);
+
+				if (matrix) {
+					const values = matrix[1].split(',').map(parseFloat);
+					scaleX *= values[0] || 1;
+					scaleY *= values[3] || 1;
+				} else if (matrix3d) {
+					const values = matrix3d[1].split(',').map(parseFloat);
+					scaleX *= values[0] || 1;
+					scaleY *= values[5] || 1;
+				}
+			}
+			current = current.parentElement;
+		}
+
+		return { x: scaleX, y: scaleY };
+	}
+
+	static getCorrectedRect(element) {
+		if (!element) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
+
+		const rect = element.getBoundingClientRect();
+		const scaleFactors = getTransformScaleFactors(element);
+
+		return {
+			top: rect.top,
+			bottom: rect.top + rect.height / scaleFactors.y,
+			left: rect.left,
+			right: rect.left + rect.width / scaleFactors.x,
+			width: rect.width / scaleFactors.x,
+			height: rect.height / scaleFactors.y
+		};
 	}
 }
 
@@ -2811,7 +2870,7 @@ class Column extends CoreFeature{
 	}
 	
 	getHeight(){
-		return Math.ceil(this.element.getBoundingClientRect().height);
+		return Helpers.getCorrectedDimensions(this.element, 'height');
 	}
 	
 	setMinWidth(minWidth){
@@ -11473,7 +11532,9 @@ class FrozenRows extends Module{
 
 		this.topElement.classList.add("tabulator-frozen-rows-holder");
 		
-		fragment.appendChild(document.createElement("br"));
+		// Replaced by adding padding-top to the tabulator-frozen-rows-holder
+		// See https://github.com/olifolkerd/tabulator/pull/4809
+		//fragment.appendChild(document.createElement("br"));
 		fragment.appendChild(this.topElement);
 
 		// this.table.columnManager.element.append(this.topElement);
@@ -17841,7 +17902,7 @@ class ReactiveData extends Module{
 					enumerable: true,
 					configurable:true,
 					writable:true,
-					value: this.origFuncs.key,
+					value: this.origFuncs[key],
 				});
 			}
 		}
@@ -18629,7 +18690,7 @@ class ResizeTable extends Module{
 	
 	initializeVisibilityObserver(){
 		this.visibilityObserver = new IntersectionObserver((entries) => {
-			this.visible = entries[0].isIntersecting;
+			this.visible = entries[entries.length - 1].isIntersecting;
 			
 			if(!this.initialized){
 				this.initialized = true;
@@ -19751,8 +19812,8 @@ class Range extends CoreFeature{
 		this.right = 0;
 		
 		this.table = table;
-		this.start = {row:0, col:0};
-		this.end = {row:0, col:0};
+		this.start = {row:undefined, col:undefined};
+		this.end = {row:undefined, col:undefined};
 
 		if(this.rangeManager.rowHeader){
 			this.left = 1;
@@ -20683,13 +20744,15 @@ class SelectRange extends Module {
 	///////////////////////////////////
 	
 	keyNavigate(dir, e){
-		if(this.navigate(false, false, dir));
-		e.preventDefault();
+		if(this.navigate(false, false, dir)){
+			e.preventDefault();
+		}
 	}
 	
 	keyNavigateRange(e, dir, jump, expand){
-		if(this.navigate(jump, expand, dir));
-		e.preventDefault();
+		if(this.navigate(jump, expand, dir)){
+			e.preventDefault();
+		}
 	}
 	
 	navigate(jump, expand, dir) {
@@ -20783,10 +20846,10 @@ class SelectRange extends Module {
 		if (moved) {
 			row = this.getRowByRangePos(range.end.row);
 			column = this.getColumnByRangePos(range.end.col);
-			rowRect = row.getElement().getBoundingClientRect();
-			columnRect = column.getElement().getBoundingClientRect();
-			rowManagerRect = this.table.rowManager.getElement().getBoundingClientRect();
-			columnManagerRect = this.table.columnManager.getElement().getBoundingClientRect();
+			rowRect = Helpers.getCorrectedRect(row.getElement());
+			columnRect = Helpers.getCorrectedRect(column.getElement());
+			rowManagerRect = Helpers.getCorrectedRect(this.table.rowManager.getElement());
+			columnManagerRect = Helpers.getCorrectedRect(this.table.columnManager.getElement());
 			
 			if(!(rowRect.top >= rowManagerRect.top && rowRect.bottom <= rowManagerRect.bottom)){
 				if(row.getElement().parentNode && column.getElement().parentNode){
@@ -20807,9 +20870,8 @@ class SelectRange extends Module {
 			}
 
 			this.layoutElement();
-			
-			return true;
 		}
+		return true;
 	}
 	
 	rangeRemoved(removed){
@@ -20823,7 +20885,7 @@ class SelectRange extends Module {
 			}
 		}
 		
-		this.layoutElement();
+		this.layoutElement(true);
 	}
 	
 	findJumpRow(column, rows, reverse, emptyStart, emptySide){
@@ -20965,11 +21027,11 @@ class SelectRange extends Module {
 		}
 		
 		if (event.shiftKey) {
-			this.activeRange.setBounds(false, element);
+			this.activeRange.setBounds(false, element, true);
 		} else if (event.ctrlKey) {
-			this.addRange().setBounds(element);
+			this.addRange().setBounds(element, undefined, true);
 		} else {
-			this.resetRanges().setBounds(element);
+			this.resetRanges().setBounds(element, undefined, true);
 		}
 	}
 	
@@ -26770,7 +26832,10 @@ class RowManager extends CoreFeature{
 		let resized = false;
 		
 		if(this.renderer.verticalFillMode === "fill"){
-			let otherHeight =  Math.floor(this.table.columnManager.getElement().getBoundingClientRect().height + (this.table.footerManager && this.table.footerManager.active && !this.table.footerManager.external ? this.table.footerManager.getElement().getBoundingClientRect().height : 0));
+			let columnHeight = Helpers.getCorrectedDimensions(this.table.columnManager.getElement(), 'height');
+			let footerHeight = (this.table.footerManager && this.table.footerManager.active && !this.table.footerManager.external) ?
+    			Helpers.getCorrectedDimensions(this.table.footerManager.getElement(), 'height') : 0;
+			let otherHeight = Math.floor(columnHeight + footerHeight);
 			
 			if(this.fixedHeight){
 				minHeight = isNaN(this.table.options.minHeight) ? this.table.options.minHeight : this.table.options.minHeight + "px";
@@ -26791,10 +26856,14 @@ class RowManager extends CoreFeature{
 			//check if the table has changed size when dealing with variable height tables
 			if(!this.fixedHeight && initialHeight != this.element.clientHeight){
 				resized = true;
-				if(this.subscribed("table-resize")){
-					this.dispatch("table-resize");
-				}else {
-					this.redraw();
+				if(!this.redrawing){ // prevent recursive redraws		
+					this.redrawing = true;
+					if(this.subscribed("table-resize")){
+						this.dispatch("table-resize");
+					}else {
+						this.redraw();
+					}
+					this.redrawing = false;
 				}
 			}
 			
@@ -27915,7 +27984,7 @@ function fitDataStretch(columns, forced){
 
 //resize columns to fit
 function fitColumns(columns, forced){
-	var totalWidth = this.table.rowManager.element.getBoundingClientRect().width; //table element width
+	var totalWidth = Helpers.getCorrectedDimensions(this.table.rowManager.element, 'width'); //table element width
 	var fixedWidth = 0; //total width of columns with a defined width
 	var flexWidth = 0; //total width available to flexible columns
 	var flexGrowUnits = 0; //total number of widthGrow blocks across all columns
@@ -28865,7 +28934,7 @@ class Tabulator extends ModuleBinder{
 		var style = window.getComputedStyle(this.element);
 		
 		switch(this.options.textDirection){
-			case"auto":
+			case "auto":
 				if(style.direction !== "rtl"){
 					break;
 				}
@@ -29006,6 +29075,7 @@ class Tabulator extends ModuleBinder{
 		//clear DOM
 		while(element.firstChild) element.removeChild(element.firstChild);
 		element.classList.remove("tabulator");
+		element.removeAttribute("tabulator-layout");
 
 		this.externalEvents.dispatch("tableDestroyed");
 	}
@@ -29597,27 +29667,23 @@ class Tabulator extends ModuleBinder{
 	}
 }
 
-var Tabulator$1 = Tabulator;
-
 //tabulator with all modules installed
 
-class TabulatorFull extends Tabulator$1 {
+class TabulatorFull extends Tabulator {
 	static extendModule(){
-		Tabulator$1.initializeModuleBinder(allModules);
-		Tabulator$1._extendModule(...arguments);
+		Tabulator.initializeModuleBinder(allModules);
+		Tabulator._extendModule(...arguments);
 	}
 
 	static registerModule(){
-		Tabulator$1.initializeModuleBinder(allModules);
-		Tabulator$1._registerModule(...arguments);
+		Tabulator.initializeModuleBinder(allModules);
+		Tabulator._registerModule(...arguments);
 	}
 
 	constructor(element, options, modules){
 		super(element, options, allModules);
 	}
 }
-
-var TabulatorFull$1 = TabulatorFull;
 
 class PseudoRow {
 
@@ -29667,5 +29733,5 @@ class PseudoRow {
 	rendered(){}
 }
 
-export { Accessor as AccessorModule, Ajax as AjaxModule, CalcComponent, CellComponent, Clipboard as ClipboardModule, ColumnCalcs as ColumnCalcsModule, ColumnComponent, DataTree as DataTreeModule, Download as DownloadModule, Edit as EditModule, Export as ExportModule, Filter as FilterModule, Format as FormatModule, FrozenColumns as FrozenColumnsModule, FrozenRows as FrozenRowsModule, GroupComponent, GroupRows as GroupRowsModule, History as HistoryModule, HtmlTableImport as HtmlTableImportModule, Import as ImportModule, Interaction as InteractionModule, Keybindings as KeybindingsModule, Menu as MenuModule, Module, MoveColumns as MoveColumnsModule, MoveRows as MoveRowsModule, Mutator as MutatorModule, Page as PageModule, Persistence as PersistenceModule, Popup as PopupModule, Print as PrintModule, PseudoRow, RangeComponent, ReactiveData as ReactiveDataModule, Renderer, ResizeColumns as ResizeColumnsModule, ResizeRows as ResizeRowsModule, ResizeTable as ResizeTableModule, ResponsiveLayout as ResponsiveLayoutModule, RowComponent, SelectRange as SelectRangeModule, SelectRow as SelectRowModule, SheetComponent, Sort as SortModule, Spreadsheet as SpreadsheetModule, Tabulator$1 as Tabulator, TabulatorFull$1 as TabulatorFull, Tooltip as TooltipModule, Validate as ValidateModule };
+export { Accessor as AccessorModule, Ajax as AjaxModule, CalcComponent, CellComponent, Clipboard as ClipboardModule, ColumnCalcs as ColumnCalcsModule, ColumnComponent, DataTree as DataTreeModule, Download as DownloadModule, Edit as EditModule, Export as ExportModule, Filter as FilterModule, Format as FormatModule, FrozenColumns as FrozenColumnsModule, FrozenRows as FrozenRowsModule, GroupComponent, GroupRows as GroupRowsModule, History as HistoryModule, HtmlTableImport as HtmlTableImportModule, Import as ImportModule, Interaction as InteractionModule, Keybindings as KeybindingsModule, Menu as MenuModule, Module, MoveColumns as MoveColumnsModule, MoveRows as MoveRowsModule, Mutator as MutatorModule, Page as PageModule, Persistence as PersistenceModule, Popup as PopupModule, Print as PrintModule, PseudoRow, RangeComponent, ReactiveData as ReactiveDataModule, Renderer, ResizeColumns as ResizeColumnsModule, ResizeRows as ResizeRowsModule, ResizeTable as ResizeTableModule, ResponsiveLayout as ResponsiveLayoutModule, RowComponent, SelectRange as SelectRangeModule, SelectRow as SelectRowModule, SheetComponent, Sort as SortModule, Spreadsheet as SpreadsheetModule, Tabulator, TabulatorFull, Tooltip as TooltipModule, Validate as ValidateModule };
 //# sourceMappingURL=tabulator_esm.mjs.map
