@@ -1,4 +1,4 @@
-import Helpers from '../../../../tools/Helpers.js';
+import Helpers from '../../../../core/tools/Helpers.js';
 
 //resize columns to fit
 export default function(columns, forced){

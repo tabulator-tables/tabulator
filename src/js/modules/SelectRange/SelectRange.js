@@ -1,7 +1,7 @@
 import Module from "../../core/Module.js";
 import Range from "./Range.js";
 import extensions from './extensions/extensions.js';
-import Helpers from '../../tools/Helpers.js';
+import Helpers from '../../core/tools/Helpers.js';
 
 export default class SelectRange extends Module {
 	
