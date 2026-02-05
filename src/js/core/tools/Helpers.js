@@ -81,28 +81,11 @@ export default class Helpers{
 
 	static getTransformScaleFactors(element) {
 		let scaleX = 1, scaleY = 1;
-		let current = element;
 
-		while (current && current !== document.body) {
-			const style = window.getComputedStyle(current);
-			const transform = style.transform;
+		const boundingClientRect = element.getBoundingClientRect();
 
-			if (transform && transform !== 'none') {
-				const matrix = transform.match(/matrix\(([^)]+)\)/);
-				const matrix3d = transform.match(/matrix3d\(([^)]+)\)/);
-
-				if (matrix) {
-					const values = matrix[1].split(',').map(parseFloat);
-					scaleX *= values[0] || 1;
-					scaleY *= values[3] || 1;
-				} else if (matrix3d) {
-					const values = matrix3d[1].split(',').map(parseFloat);
-					scaleX *= values[0] || 1;
-					scaleY *= values[5] || 1;
-				}
-			}
-			current = current.parentElement;
-		}
+		scaleX = boundingClientRect.width / element.offsetWidth;
+		scaleY = boundingClientRect.height / element.offsetHeight;
 
 		return { x: scaleX, y: scaleY };
 	}
