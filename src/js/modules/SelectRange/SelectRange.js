@@ -1,7 +1,6 @@
 import Module from "../../core/Module.js";
 import Range from "./Range.js";
 import extensions from './extensions/extensions.js';
-import Helpers from '../../core/tools/Helpers.js';
 
 export default class SelectRange extends Module {
 	
@@ -505,10 +504,10 @@ export default class SelectRange extends Module {
 		if (moved) {
 			row = this.getRowByRangePos(range.end.row);
 			column = this.getColumnByRangePos(range.end.col);
-			rowRect = Helpers.getCorrectedRect(row.getElement());
-			columnRect = Helpers.getCorrectedRect(column.getElement());
-			rowManagerRect = Helpers.getCorrectedRect(this.table.rowManager.getElement());
-			columnManagerRect = Helpers.getCorrectedRect(this.table.columnManager.getElement());
+			rowRect = row.getElement().getBoundingClientRect();
+			columnRect = column.getElement().getBoundingClientRect();
+			rowManagerRect = this.table.rowManager.getElement().getBoundingClientRect();
+			columnManagerRect = this.table.columnManager.getElement().getBoundingClientRect();
 			
 			if(!(rowRect.top >= rowManagerRect.top && rowRect.bottom <= rowManagerRect.bottom)){
 				if(row.getElement().parentNode && column.getElement().parentNode){
