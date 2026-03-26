@@ -1009,6 +1009,12 @@ export default class Edit{
 			this._styleItem(item);
 			
 		}else{
+			if(this.isFilter && !silent && item.selected){
+				this._clearChoices();
+				this.input.value = "";
+				this._resolveValue();
+				return;
+			}
 			this.currentItems = [item];
 			item.selected = true;
 			
