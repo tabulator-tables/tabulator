@@ -410,7 +410,11 @@ export default class Edit{
 			this._resolveValue(true);
 		}else{
 			if(this.focusedItem){
-				this._chooseItem(this.focusedItem);
+				if(this.isFilter && !this.params.multiselect && this.focusedItem.selected){
+					this._resolveValue();
+				}else{
+					this._chooseItem(this.focusedItem);
+				}
 			}
 		}
 	}
@@ -685,6 +689,10 @@ export default class Edit{
 			if(this.params.multiselect){
 				var existingIndex = this.currentItems.findIndex(existing => existing.value === option.value);
 				if(existingIndex > -1){
+					if(this.focusedItem === this.currentItems[existingIndex]){
+						this.focusedItem = item;
+					}
+					
 					this.currentItems[existingIndex] = item;
 					item.selected = true;
 				}else if(this.initialValues && this.initialValues.indexOf(option.value) > -1){
