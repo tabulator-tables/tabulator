@@ -1,5 +1,6 @@
 import TabulatorFull from '../../../src/js/core/TabulatorFull.js';
 import Edit from '../../../src/js/modules/Edit/Edit.js';
+import List from '../../../src/js/modules/Edit/List.js';
 
 describe("Edit module", () => {
 	let table;
@@ -31,6 +32,32 @@ describe("Edit module", () => {
 		});
 		
 		return newTable;
+	};
+	
+	const setupList = ({
+		cellType = "header",
+		cellValue = "Female",
+		editorParams = { values: ["Male", "Female"] },
+		success = jest.fn(),
+		cancel = jest.fn(),
+	} = {}) => {
+		const element = document.createElement("div");
+		const list = new List(
+			{
+				table: {},
+			},
+			{
+				getType: jest.fn().mockReturnValue(cellType),
+				getValue: jest.fn().mockReturnValue(cellValue),
+				getElement: jest.fn().mockReturnValue(element),
+			},
+			jest.fn(),
+			success,
+			cancel,
+			editorParams
+		);
+		
+		return {list, success, cancel, element};
 	};
 	
 	beforeEach(async () => {
@@ -124,5 +151,58 @@ describe("Edit module", () => {
 		
 		// Should have received the cellEdited event
 		expect(cellEditedSpy).toHaveBeenCalled();
+	});
+	
+	it("should apply a focused header list filter item when Enter is pressed", () => {
+		const {list, success} = setupList({
+			cellValue: "",
+		});
+		const item = list.data.find(item => item.value === "Female");
+		
+		list._focusItem(item);
+		list._keyEnter();
+		
+		expect(success).toHaveBeenCalledWith("Female");
+		expect(list.input.value).toBe("Female");
+	});
+	
+	it("should keep a header list filter selected when Enter is pressed repeatedly", () => {
+		const {list, success} = setupList();
+		
+		list._keyEnter();
+		list._keyEnter();
+		
+		expect(success).toHaveBeenCalledTimes(2);
+		expect(success).toHaveBeenNthCalledWith(1, "Female");
+		expect(success).toHaveBeenNthCalledWith(2, "Female");
+	});
+	
+	it("should use currentItems instead of initialValues after the first multiselect parse", () => {
+		const {list} = setupList({
+			cellType: "cell",
+			cellValue: ["red", "blue"],
+			editorParams: {
+				multiselect: true,
+				values: ["red", "green", "blue"],
+			},
+		});
+		
+		list._parseList(["red", "green", "blue"]);
+		
+		expect(list.initialValues).toBeNull();
+		expect(list.currentItems.map(item => item.value)).toEqual(["red", "blue"]);
+		
+		list._chooseItem(list.currentItems.find(item => item.value === "red"));
+		
+		expect(list.currentItems.map(item => item.value)).toEqual(["blue"]);
+		
+		const rebuiltItems = list._parseList(["red", "green", "blue"]);
+		const redItem = rebuiltItems.find(item => item.value === "red");
+		const blueItem = rebuiltItems.find(item => item.value === "blue");
+		
+		expect(list.initialValues).toBeNull();
+		expect(redItem.selected).toBe(false);
+		expect(blueItem.selected).toBe(true);
+		expect(list.currentItems).toEqual([blueItem]);
 	});
 });
