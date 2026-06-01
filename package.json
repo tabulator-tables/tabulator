@@ -64,7 +64,7 @@
   "devDependencies": {
     "@babel/core": "^7.26.9",
     "@babel/preset-env": "^7.26.9",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.60.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@types/node": "^22.13.5",
