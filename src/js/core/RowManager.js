@@ -194,8 +194,15 @@ export default class RowManager extends CoreFeature{
 	}
 	
 	getRowFromPosition(position){
-		return this.getDisplayRows().find((row) => {
-			return row.type === "row" && row.getPosition() === position && row.isDisplayed();
+		var displayRows = this.getDisplayRows();
+		var row = displayRows[position - 1];
+
+		if (row && row.type === "row" && row.getPosition() === position) {
+			return row;
+		}
+
+		return displayRows.find((row) => {
+			return row.type === "row" && row.getPosition() === position;
 		});
 	}
 	

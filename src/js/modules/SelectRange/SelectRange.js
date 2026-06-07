@@ -23,6 +23,10 @@ export default class SelectRange extends Module {
 		this.maxRanges = 0;
 		this.activeRange = false;
 		this.blockKeydown = false;
+		this._rafId = null;
+		this._pendingCell = null;
+		this._pendingColumn = null;
+		this._tableRowsCache = null;
 		
 		this.keyDownEvent = this._handleKeyDown.bind(this);
 		this.mouseUpEvent = this._handleMouseUp.bind(this);
@@ -232,6 +236,11 @@ export default class SelectRange extends Module {
 	_handleMouseUp(e){
 		this.mousedown = false;
 		document.removeEventListener("mouseup", this.mouseUpEvent);
+
+		if (this._rafId) {
+			cancelAnimationFrame(this._rafId);
+			this._rafId = null;
+		}
 	}
 	
 	_handleKeyDown(e) {
@@ -340,11 +349,20 @@ export default class SelectRange extends Module {
 		if (column === this.rowHeader || !this.mousedown || this.selecting === 'all') {
 			return;
 		}
-		
-		this.activeRange.setBounds(false, column, true);
+
+		this._pendingColumn = column;
+
+		if (!this._rafId) {
+			this._rafId = requestAnimationFrame(() => {
+				this._rafId = null;
+				if (this._pendingColumn) {
+					this.activeRange.setBounds(false, this._pendingColumn, true);
+					this._pendingColumn = null;
+				}
+			});
+		}
 	}
-	
-	///////////////////////////////////
+
 	//////// Cell Functionality ///////
 	///////////////////////////////////
 	
@@ -374,8 +392,18 @@ export default class SelectRange extends Module {
 		if (!this.mousedown || this.selecting === "all") {
 			return;
 		}
-		
-		this.activeRange.setBounds(false, cell, true);
+
+		this._pendingCell = cell;
+
+		if (!this._rafId) {
+			this._rafId = requestAnimationFrame(() => {
+				this._rafId = null;
+				if (this._pendingCell) {
+					this.activeRange.setBounds(false, this._pendingCell, true);
+					this._pendingCell = null;
+				}
+			});
+		}
 	}
 	
 	handleCellClick(e, cell){
@@ -900,7 +928,10 @@ export default class SelectRange extends Module {
 	}
 	
 	getTableRows() {
-		return this.table.rowManager.getDisplayRows().filter(row=> row.type === "row");
+		if (!this._tableRowsCache) {
+			this._tableRowsCache = this.table.rowManager.getDisplayRows().filter(row => row.type === "row");
+		}
+		return this._tableRowsCache;
 	}
 	
 	getTableColumns() {
@@ -924,6 +955,8 @@ export default class SelectRange extends Module {
 	}
 	
 	resetRanges() {
+		this._tableRowsCache = null;
+
 		var range, cell, visibleCells;
 		
 		this.ranges.forEach((range) => range.destroy());
@@ -949,6 +982,11 @@ export default class SelectRange extends Module {
 	tableDestroyed(){
 		document.removeEventListener("mouseup", this.mouseUpEvent);
 		this.table.rowManager.element.removeEventListener("keydown", this.keyDownEvent);
+		if (this._rafId) {
+			cancelAnimationFrame(this._rafId);
+			this._rafId = null;
+		}
+		this._tableRowsCache = null;
 	}
 	
 	selectedRows(component) {
