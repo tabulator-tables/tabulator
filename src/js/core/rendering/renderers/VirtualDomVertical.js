@@ -363,7 +363,18 @@ export default class VirtualDomVertical extends Renderer{
 				this.vDomScrollHeight = topPadHeight + rowsHeight + this.vDomBottomPad - containerHeight;
 			}else {
 				this.vDomTopPad = !forceMove ? this.scrollTop - topPadHeight : (this.vDomRowHeight * this.vDomTop) + offset;
-				this.vDomBottomPad = this.vDomBottom == rowsCount-1 ? 0 : Math.max(this.vDomScrollHeight - this.vDomTopPad - rowsHeight - topPadHeight, 0);
+
+				if(forceMove){
+					//moving to a specific position (e.g. after adding/removing rows or
+					//scrolling to a row), so recalculate the bottom padding from the number
+					//of rows below the rendered range. This keeps the virtual scroll height
+					//in sync with the current row count rather than reusing the previously
+					//cached value, which would otherwise leave the new rows unreachable.
+					this.vDomBottomPad = this.vDomBottom == rowsCount-1 ? 0 : this.vDomRowHeight * (rowsCount - this.vDomBottom -1);
+					this.vDomScrollHeight = this.vDomTopPad + topPadHeight + rowsHeight + this.vDomBottomPad - containerHeight;
+				}else {
+					this.vDomBottomPad = this.vDomBottom == rowsCount-1 ? 0 : Math.max(this.vDomScrollHeight - this.vDomTopPad - rowsHeight - topPadHeight, 0);
+				}
 			}
 			
 			element.style.paddingTop = this.vDomTopPad+"px";
