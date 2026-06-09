@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Tabulator Add Row Scroll Test</title>
+	<link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+	<script src="../../dist/js/tabulator.js"></script>
+	<style>
+	body {
+		padding: 20px;
+		font-family: Arial, sans-serif;
+	}
+	#test-table {
+		width: 600px;
+	}
+	</style>
+</head>
+<body>
+	<h1>Tabulator Add Row Scroll Test</h1>
+	<div id="test-table"></div>
+
+	<script>
+		function generateData(count, startId) {
+			const data = [];
+			for (let i = 0; i < count; i++) {
+				const id = startId + i;
+				data.push({
+					id: id,
+					name: "Row " + id,
+					value: id,
+				});
+			}
+			return data;
+		}
+
+		window.generateData = generateData;
+
+		window.testTable = new Tabulator("#test-table", {
+			data: generateData(100, 1),
+			columns: [
+				{ title: "Id", field: "id", sorter: "number" },
+				{ title: "Name", field: "name" },
+				{ title: "Value", field: "value", sorter: "number" },
+			],
+			height: "300px",
+			layout: "fitColumns",
+			addRowPos: "bottom",
+		});
+	</script>
+</body>
+</html>
