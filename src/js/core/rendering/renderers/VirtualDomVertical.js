@@ -331,7 +331,7 @@ export default class VirtualDomVertical extends Renderer{
 				});
 
 				renderedRows.forEach((row) => {
-					rowHeight = row.getHeight();
+					rowHeight = row.getHeight() || row.element.offsetHeight || this.vDomRowHeight;
 
 					if(totalRowsRendered < topPad){
 						topPadHeight += rowHeight;
@@ -569,7 +569,7 @@ export default class VirtualDomVertical extends Renderer{
 		if(paddingAdjust){
 			this.vDomBottomPad -= paddingAdjust;
 
-			if(this.vDomBottomPad < 0 || index == rows.length -1){
+			if(this.vDomBottomPad < 0 || index >= rows.length -1){
 				this.vDomBottomPad = 0;
 			}
 
