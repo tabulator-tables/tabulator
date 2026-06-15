@@ -165,32 +165,28 @@ export default class Renderer extends CoreFeature{
 				//scroll to row
 				this.scrollToRow(row);
 
-				//align to correct position
+				//align to correct position using the row's actual rendered offset
+				//(after scrollToRow the row is not necessarily at the top)
 				switch(position){
 					case "middle":
 					case "center":
-
-						if(this.elementVertical.scrollHeight - this.elementVertical.scrollTop == this.elementVertical.clientHeight){
-							this.elementVertical.scrollTop = this.elementVertical.scrollTop + (rowEl.offsetTop - this.elementVertical.scrollTop) - ((this.elementVertical.scrollHeight - rowEl.offsetTop) / 2);
-						}else{
-							this.elementVertical.scrollTop = this.elementVertical.scrollTop - (this.elementVertical.clientHeight / 2);
-						}
-
+						this.elementVertical.scrollTop = rowEl.offsetTop - (this.elementVertical.clientHeight / 2) + (rowEl.offsetHeight / 2);
 						break;
 
 					case "bottom":
-
-						if(this.elementVertical.scrollHeight - this.elementVertical.scrollTop == this.elementVertical.clientHeight){
-							this.elementVertical.scrollTop = this.elementVertical.scrollTop - (this.elementVertical.scrollHeight - rowEl.offsetTop) + rowEl.offsetHeight;
-						}else{
-							this.elementVertical.scrollTop = this.elementVertical.scrollTop - this.elementVertical.clientHeight + rowEl.offsetHeight;
-						}
-
+						this.elementVertical.scrollTop = rowEl.offsetTop - this.elementVertical.clientHeight + rowEl.offsetHeight;
 						break;
 
 					case "top":
-						this.elementVertical.scrollTop = rowEl.offsetTop;					
+						this.elementVertical.scrollTop = rowEl.offsetTop;
 						break;
+				}
+
+				//keep the virtual renderer's scroll trackers in sync so the next scroll
+				//event doesn't read this manual adjustment as a large jump
+				if(this.vDomScrollPosTop !== undefined){
+					this.vDomScrollPosTop = this.elementVertical.scrollTop;
+					this.vDomScrollPosBottom = this.elementVertical.scrollTop;
 				}
 
 				resolve();
