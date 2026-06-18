@@ -245,7 +245,7 @@ export default class SelectRange extends Module {
 
 				var activeCell = this.getActiveCell();
 				// no range is selected
-				if(activeCell) {
+				if(!activeCell) {
 					return;
 				}
 
