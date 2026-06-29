@@ -32,6 +32,9 @@ export default class SelectRange extends Module {
 		this.registerTableOption("selectableRangeRows", false); //enable selectable range
 		this.registerTableOption("selectableRangeClearCells", false); //allow clearing of active range
 		this.registerTableOption("selectableRangeClearCellsValue", undefined); //value for cleared active range
+		this.registerTableOption("selectableRangeAutoFocus", true); //focus on a cell after resetRanges
+		this.registerTableOption("selectableRangeInitializeDefault", true); //initializes default range on cell [0,0]
+		this.registerTableOption("selectableRangeBlurEditOnNavigate", undefined); //prevent editing on navigation
 		
 		this.registerTableFunction("getRangesData", this.getRangesData.bind(this));
 		this.registerTableFunction("getRanges", this.getRanges.bind(this));
@@ -65,6 +68,10 @@ export default class SelectRange extends Module {
 				console.warn("Having multiple frozen columns with selectRange option may result in unpredictable behavior.");
 			}
 		}
+		
+		this.subscribe("edit-nav-disabled", () => {
+			return true; // Disable navigation in edit module
+		});
 	}
 	
 	
@@ -83,7 +90,7 @@ export default class SelectRange extends Module {
 		
 		this.table.rowManager.element.addEventListener("keydown", this.keyDownEvent);
 		
-		this.resetRanges();
+		this.setDefaultRange();
 		
 		this.table.rowManager.element.appendChild(this.overlay);
 		this.table.columnManager.element.setAttribute("tabindex", 0);
@@ -98,6 +105,8 @@ export default class SelectRange extends Module {
 		this.subscribe("column-mousedown", this.handleColumnMouseDown.bind(this));
 		this.subscribe("column-mousemove", this.handleColumnMouseMove.bind(this));
 		this.subscribe("column-resized", this.handleColumnResized.bind(this));
+		this.subscribe("column-moving", this.handleColumnMoving.bind(this));
+		this.subscribe("column-moved", this.handleColumnMoved.bind(this));
 		this.subscribe("column-width", this.layoutChange.bind(this));
 		this.subscribe("column-height", this.layoutChange.bind(this));
 		this.subscribe("column-resized", this.layoutChange.bind(this));
@@ -116,7 +125,7 @@ export default class SelectRange extends Module {
 		this.subscribe("scroll-horizontal", this.layoutChange.bind(this));
 		
 		this.subscribe("data-destroy", this.tableDestroyed.bind(this));
-		this.subscribe("data-processed", this.resetRanges.bind(this));
+		this.subscribe("data-processed", this.setDefaultRange.bind(this));
 		
 		this.subscribe("table-layout", this.layoutElement.bind(this));
 		this.subscribe("table-redraw", this.redraw.bind(this));
@@ -125,8 +134,8 @@ export default class SelectRange extends Module {
 		this.subscribe("edit-editor-clear", this.finishEditingCell.bind(this));
 		this.subscribe("edit-blur", this.restoreFocus.bind(this));
 		
-		this.subscribe("keybinding-nav-prev", this.keyNavigate.bind(this, "left"));
-		this.subscribe("keybinding-nav-next", this.keyNavigate.bind(this, "right"));
+		this.subscribe("keybinding-nav-prev", this.keyNavigate.bind(this, "prev"));
+		this.subscribe("keybinding-nav-next", this.keyNavigate.bind(this, "next"));
 		this.subscribe("keybinding-nav-left", this.keyNavigate.bind(this, "left"));
 		this.subscribe("keybinding-nav-right", this.keyNavigate.bind(this, "right"));
 		this.subscribe("keybinding-nav-up", this.keyNavigate.bind(this, "up"));
@@ -138,12 +147,6 @@ export default class SelectRange extends Module {
 	initializeColumn(column) {
 		if(this.columnSelection && column.definition.headerSort && this.options("headerSortClickElement") !== "icon"){
 			console.warn("Using column headerSort with selectableRangeColumns option may result in unpredictable behavior. Consider using headerSortClickElement: 'icon'.");
-		}
-		
-		if (column.modules.edit) {
-			// Block editor from taking action so we can trigger edit by
-			// double clicking.
-			// column.modules.edit.blocked = true;
 		}
 	}
 	
@@ -239,9 +242,15 @@ export default class SelectRange extends Module {
 				if (this.table.modules.edit && this.table.modules.edit.currentCell) {
 					return;
 				}
-				
-				this.table.modules.edit.editCell(this.getActiveCell());
-				
+
+				var activeCell = this.getActiveCell();
+				// no range is selected
+				if(!activeCell) {
+					return;
+				}
+
+				this.table.modules.edit.editCell(activeCell);
+
 				e.preventDefault();
 			}
 			
@@ -255,6 +264,8 @@ export default class SelectRange extends Module {
 	
 	initializeFocus(cell){
 		var range;
+
+		this.restoreFocus();
 		
 		try{
 			if (document.selection) { // IE
@@ -304,8 +315,24 @@ export default class SelectRange extends Module {
 		});
 	}
 	
+	handleColumnMoving(_event, column) {
+		this.resetRanges().setBounds(column);
+		this.overlay.style.visibility = "hidden";
+	}
+
+	handleColumnMoved(from, _to, _after) {
+		this.activeRange.setBounds(from);
+		this.layoutElement();
+	}
+
 	handleColumnMouseDown(event, column) {
 		if (event.button === 2 && (this.selecting === "column" || this.selecting === "all") && this.activeRange.occupiesColumn(column)) {
+			return;
+		}
+
+		//If columns are movable, allow dragging columns only if they are not
+		//selected. Dragging selected columns should move the columns instead.
+		if(this.table.options.movableColumns && this.selecting === "column" && this.activeRange.occupiesColumn(column)){
 			return;
 		}
 		
@@ -382,6 +409,25 @@ export default class SelectRange extends Module {
 	///////////////////////////////////
 	
 	keyNavigate(dir, e){
+		if(this.options("selectableRangeBlurEditOnNavigate")){
+			const isEditing = this.chain("edit-check-editing");
+			
+			if(isEditing){
+				if(dir === 'next' || dir === 'prev'){
+					this.dispatch("edit-cancel-cell");
+				}else{
+					// Prevent navigating while editing except for next/prev
+					return false;
+				}
+			}
+		}
+
+		if (dir === 'prev') {
+			dir = 'left';
+		} else if (dir === 'next') {
+			dir = 'right';
+		}
+
 		if(this.navigate(false, false, dir)){
 			e.preventDefault();
 		}
@@ -395,7 +441,8 @@ export default class SelectRange extends Module {
 	
 	navigate(jump, expand, dir) {
 		var moved = false,
-		range, rangeEdge, nextRow, nextCol, row, column;
+		range, rangeEdge, prevRect, nextRow, nextCol, row, column,
+		rowRect, rowManagerRect, columnRect, columnManagerRect;
 		
 		// Don't navigate while editing
 		if (this.table.modules.edit && this.table.modules.edit.currentCell) {
@@ -415,6 +462,12 @@ export default class SelectRange extends Module {
 		}
 		
 		range = this.activeRange;
+		prevRect = {
+			top: range.top,
+			bottom: range.bottom,
+			left: range.left,
+			right: range.right
+		};
 		
 		rangeEdge = expand ? range.end : range.start;
 		nextRow = rangeEdge.row;
@@ -457,8 +510,10 @@ export default class SelectRange extends Module {
 					break;
 			}
 		}
-		
-		moved = nextCol !== rangeEdge.col || nextRow !== rangeEdge.row;
+
+		if(this.rowHeader && nextCol === 0) {
+			nextCol = 1;
+		}
 		
 		if(!expand){
 			range.setStart(nextRow, nextCol);
@@ -469,24 +524,38 @@ export default class SelectRange extends Module {
 		if(!expand){
 			this.selecting = "cell";
 		}
-		
+
+		moved = prevRect.top !== range.top || prevRect.bottom !== range.bottom || prevRect.left !== range.left || prevRect.right !== range.right;
+
 		if (moved) {
 			row = this.getRowByRangePos(range.end.row);
 			column = this.getColumnByRangePos(range.end.col);
+			rowRect = row.getElement().getBoundingClientRect();
+			columnRect = column.getElement().getBoundingClientRect();
+			rowManagerRect = this.table.rowManager.getElement().getBoundingClientRect();
+			columnManagerRect = this.table.columnManager.getElement().getBoundingClientRect();
 			
-			if ((dir === 'left' || dir === 'right') && column.getElement().parentNode === null) {
-				column.getComponent().scrollTo(undefined, false);
-			} else if ((dir === 'up' || dir === 'down') && row.getElement().parentNode === null) {
-				row.getComponent().scrollTo(undefined, false);
-			} else {
-				// Use faster autoScroll when the elements are on the DOM
-				this.autoScroll(range, row.getElement(), column.getElement());
+			if(!(rowRect.top >= rowManagerRect.top && rowRect.bottom <= rowManagerRect.bottom)){
+				if(row.getElement().parentNode && column.getElement().parentNode){
+					// Use faster autoScroll when the elements are on the DOM
+					this.autoScroll(range, row.getElement(), column.getElement());
+				}else{
+					row.getComponent().scrollTo(undefined, false);
+				}
 			}
-			
+
+			if(!(columnRect.left >= columnManagerRect.left + this.getRowHeaderWidth() && columnRect.right <= columnManagerRect.right)){
+				if(row.getElement().parentNode && column.getElement().parentNode){
+					// Use faster autoScroll when the elements are on the DOM
+					this.autoScroll(range, row.getElement(), column.getElement());
+				}else{
+					column.getComponent().scrollTo(undefined, false);
+				}
+			}
+
 			this.layoutElement();
-			
-			return true;
 		}
+		return true;
 	}
 	
 	rangeRemoved(removed){
@@ -500,103 +569,111 @@ export default class SelectRange extends Module {
 			}
 		}
 		
-		this.layoutElement();
+		this.layoutElement(true);
 	}
 	
-	findJumpCell(cells, reverse, emptyStart, emptySide){
-		var nextCell;
-		
+	findJumpRow(column, rows, reverse, emptyStart, emptySide){
 		if(reverse){
-			cells = cells.reverse();
+			rows = rows.reverse();
 		}
-		
-		for(let currentCell of cells){
-			let currentValue = currentCell.getValue();
+
+		return this.findJumpItem(emptyStart, emptySide, rows, function(row){return row.getData()[column.getField()];});
+	}
+	
+	findJumpCol(row, columns, reverse, emptyStart, emptySide){
+		if(reverse){
+			columns = columns.reverse();
+		}
+
+		return this.findJumpItem(emptyStart, emptySide, columns, function(column){return row.getData()[column.getField()];});
+	}
+
+	findJumpItem(emptyStart, emptySide, items, valueResolver){
+		var nextItem;
+
+		for(let currentItem of items){
+			let currentValue = valueResolver(currentItem);
 			
 			if(emptyStart){
-				nextCell = currentCell;
+				nextItem = currentItem;
 				if(currentValue){
 					break;
 				}
 			}else{
 				if(emptySide){
-					nextCell = currentCell;
+					nextItem = currentItem;
 					
 					if(currentValue){
 						break;
 					}
 				}else{
 					if(currentValue){
-						nextCell = currentCell;
+						nextItem = currentItem;
 					}else{
 						break;
 					}
 				}
 			}
 		}
-		
-		return nextCell;
+
+		return nextItem;
 	}
-	
+
 	findJumpCellLeft(rowPos, colPos){
 		var row = this.getRowByRangePos(rowPos),
-		cells = row.cells.filter((cell) => cell.column.visible),
-		isStartingCellEmpty = !cells[colPos].getValue(),
-		isLeftOfStartingCellEmpty = cells[colPos] ? !cells[colPos].getValue() : false,
-		jumpCol = colPos,
-		targetCells = this.rowHeader ? cells.slice(1, colPos) : cells.slice(0, colPos),
-		nextCell = this.findJumpCell(targetCells, true, isStartingCellEmpty, isLeftOfStartingCellEmpty);
+		columns = this.getTableColumns(),
+		isStartingCellEmpty = this.isEmpty(row.getData()[columns[colPos].getField()]),
+		isLeftOfStartingCellEmpty = columns[colPos - 1] ? this.isEmpty(row.getData()[columns[colPos - 1].getField()]) : false,
+		targetCols = this.rowHeader ? columns.slice(1, colPos) : columns.slice(0, colPos),
+		jumpCol = this.findJumpCol(row, targetCols, true, isStartingCellEmpty, isLeftOfStartingCellEmpty);
 		
-		if(nextCell){
-			jumpCol = nextCell.column.getPosition() - 1;
+		if(jumpCol){
+			return jumpCol.getPosition() - 1;
 		}
 		
-		return jumpCol;
+		return colPos;
 	}
 	
 	findJumpCellRight(rowPos, colPos){
 		var row = this.getRowByRangePos(rowPos),
-		cells = row.cells.filter((cell) => cell.column.visible),
-		isStartingCellEmpty = !cells[colPos].getValue(),
-		isRightOfStartingCellEmpty = cells[colPos + 1] ? !cells[colPos + 1].getValue() : false,
-		jumpCol = colPos,
-		nextCell = this.findJumpCell(cells.slice(colPos + 1, cells.length), false, isStartingCellEmpty, isRightOfStartingCellEmpty);
+		columns = this.getTableColumns(),
+		isStartingCellEmpty = this.isEmpty(row.getData()[columns[colPos].getField()]),
+		isRightOfStartingCellEmpty = columns[colPos + 1] ? this.isEmpty(row.getData()[columns[colPos + 1].getField()]) : false,
+		jumpCol = this.findJumpCol(row, columns.slice(colPos + 1, columns.length), false, isStartingCellEmpty, isRightOfStartingCellEmpty);
 		
-		if(nextCell){
-			jumpCol = nextCell.column.getPosition() - 1;
+		if(jumpCol){
+			return jumpCol.getPosition() - 1;
 		}
 		
-		return jumpCol;
+		return colPos;
 	}
 	
 	findJumpCellUp(rowPos, colPos) {
 		var column = this.getColumnByRangePos(colPos),
-		cells = column.cells.filter((cell) => this.table.rowManager.activeRows.includes(cell.row)),
-		isStartingCellEmpty = !cells[rowPos].getValue(),
-		isTopOfStartingCellEmpty = cells[rowPos - 1] ? !cells[rowPos - 1].getValue() : false,
-		jumpRow = rowPos,
-		nextCell = this.findJumpCell(cells.slice(0, jumpRow), true, isStartingCellEmpty, isTopOfStartingCellEmpty);
+		rows = this.getTableRows(),
+		isStartingCellEmpty = this.isEmpty(rows[rowPos].getData()[column.getField()]),
+		isTopOfStartingCellEmpty = rows[rowPos - 1] ? this.isEmpty(rows[rowPos - 1].getData()[column.getField()]) : false,
+		jumpRow = this.findJumpRow(column, rows.slice(0, rowPos), true, isStartingCellEmpty, isTopOfStartingCellEmpty);
 		
-		if(nextCell){
-			jumpRow = nextCell.row.position - 1;
+		if(jumpRow){
+			return jumpRow.position - 1;
 		}
 		
-		return jumpRow;
+		return rowPos;
 	}
 	
 	findJumpCellDown(rowPos, colPos) {
 		var column = this.getColumnByRangePos(colPos),
-		cells = column.cells.filter((cell) => this.table.rowManager.activeRows.includes(cell.row)),
-		isStartingCellEmpty = !cells[rowPos].getValue(),
-		isBottomOfStartingCellEmpty = cells[rowPos + 1] ? !cells[rowPos + 1].getValue() : false,
-		jumpRow = rowPos,
-		nextCell = this.findJumpCell(cells.slice(jumpRow + 1, cells.length), false, isStartingCellEmpty, isBottomOfStartingCellEmpty);
+		rows = this.getTableRows(),
+		isStartingCellEmpty = this.isEmpty(rows[rowPos].getData()[column.getField()]),
+		isBottomOfStartingCellEmpty = rows[rowPos + 1] ? this.isEmpty(rows[rowPos + 1].getData()[column.getField()]) : false,
+		jumpRow = this.findJumpRow(column, rows.slice(rowPos + 1, rows.length), false, isStartingCellEmpty, isBottomOfStartingCellEmpty);
 		
-		if(nextCell){
-			jumpRow = nextCell.row.position - 1;
+		if(jumpRow){
+			return jumpRow.position - 1;
 		}
 		
-		return jumpRow;
+		return rowPos;
 	}
 	
 	///////////////////////////////////
@@ -634,17 +711,17 @@ export default class SelectRange extends Module {
 		}
 		
 		if (event.shiftKey) {
-			this.activeRange.setBounds(false, element);
+			this.activeRange.setBounds(false, element, true);
 		} else if (event.ctrlKey) {
-			this.addRange().setBounds(element);
+			this.addRange().setBounds(element, undefined, true);
 		} else {
-			this.resetRanges().setBounds(element);
+			this.resetRanges().setBounds(element, undefined, true);
 		}
 	}
 	
 	autoScroll(range, row, column) {
 		var tableHolder = this.table.rowManager.element,
-		rowHeader, rect, view, withinHorizontalView, withinVerticalView;
+		rect, view, withinHorizontalView, withinVerticalView;
 		
 		if (typeof row === 'undefined') {
 			row = this.getRowByRangePos(range.end.row).getElement();
@@ -652,10 +729,6 @@ export default class SelectRange extends Module {
 		
 		if (typeof column === 'undefined') {
 			column = this.getColumnByRangePos(range.end.col).getElement();
-		}
-		
-		if (this.rowHeader) {
-			rowHeader = this.rowHeader.getElement();
 		}
 		
 		rect = {
@@ -666,15 +739,11 @@ export default class SelectRange extends Module {
 		};
 		
 		view = {
-			left: tableHolder.scrollLeft,
+			left: tableHolder.scrollLeft + this.getRowHeaderWidth(),
 			right: Math.ceil(tableHolder.scrollLeft + tableHolder.clientWidth),
 			top: tableHolder.scrollTop,
 			bottom:	tableHolder.scrollTop +	tableHolder.offsetHeight - this.table.rowManager.scrollbarWidth,
 		};
-		
-		if (rowHeader) {
-			view.left += rowHeader.offsetWidth;
-		}
 		
 		withinHorizontalView = view.left < rect.left &&	rect.left < view.right && view.left < rect.right &&	rect.right < view.right;
 		
@@ -682,12 +751,9 @@ export default class SelectRange extends Module {
 		
 		if (!withinHorizontalView) {
 			if (rect.left < view.left) {
-				tableHolder.scrollLeft = rect.left;
-				if (rowHeader) {
-					tableHolder.scrollLeft -= rowHeader.offsetWidth;
-				}
+				tableHolder.scrollLeft = rect.left - this.getRowHeaderWidth();
 			} else if (rect.right > view.right) {
-				tableHolder.scrollLeft = rect.right - tableHolder.clientWidth;
+				tableHolder.scrollLeft = Math.min(rect.right - tableHolder.clientWidth, rect.left - this.getRowHeaderWidth());
 			}
 		}
 		
@@ -714,7 +780,7 @@ export default class SelectRange extends Module {
 	redraw(force) {
 		if (force) {
 			this.selecting = 'cell';
-			this.resetRanges();
+			this.setDefaultRange();
 			this.layoutElement();
 		}
 	}
@@ -829,6 +895,7 @@ export default class SelectRange extends Module {
 	
 	
 	getActiveCell() {
+		if(!this.activeRange) return;
 		return this.getCell(this.activeRange.start.row, this.activeRange.start.col);
 	}
 	
@@ -863,26 +930,41 @@ export default class SelectRange extends Module {
 		
 		return range;
 	}
-	
-	resetRanges() {
+
+	createDefaultRange() {
 		var range, cell, visibleCells;
-		
-		this.ranges.forEach((range) => range.destroy());
-		this.ranges = [];
-		
 		range = this.addRange();
-		
-		if(this.table.rowManager.activeRows.length){
+
+		if(this.table.rowManager.activeRows.length) {
 			visibleCells = this.table.rowManager.activeRows[0].cells.filter((cell) => cell.column.visible);
 			cell = visibleCells[this.rowHeader ? 1 : 0];
 
-			if(cell){
+			if (cell) {
 				range.setBounds(cell);
-				this.initializeFocus(cell);
+				if (this.options("selectableRangeAutoFocus")) {
+					this.initializeFocus(cell);
+				}
 			}
 		}
-		
+
 		return range;
+	}
+
+	clearRanges() {
+		this.ranges.forEach((range) => range.destroy());
+		this.ranges = [];
+	}
+
+	setDefaultRange() {
+		this.clearRanges();
+		if(this.options("selectableRangeInitializeDefault")) {
+			this.createDefaultRange();
+		}
+	}
+
+	resetRanges() {
+		this.clearRanges();
+		return this.createDefaultRange();
 	}
 	
 	tableDestroyed(){
@@ -896,5 +978,16 @@ export default class SelectRange extends Module {
 	
 	selectedColumns(component) {
 		return component ? this.activeRange.getColumns().map((col) => col.getComponent()) : this.activeRange.getColumns();
+	}
+
+	getRowHeaderWidth(){
+		if(!this.rowHeader){
+			return 0;
+		}
+		return this.rowHeader.getElement().offsetWidth;
+	}
+
+	isEmpty(value) {
+		return value === null || value === undefined || value === "";
 	}
 }

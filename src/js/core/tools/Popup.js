@@ -196,19 +196,30 @@ export default class Popup extends CoreFeature{
 		}
 		
 		//move menu to start on bottom edge if it is too close to the edge of the screen
-		if((y + this.element.offsetHeight) > Math.max(this.container.offsetHeight, scrollTop ? this.container.scrollHeight : 0)) {
+		let offsetHeight = Math.max(this.container.offsetHeight, scrollTop ? this.container.scrollHeight : 0);
+		if((y + this.element.offsetHeight) > offsetHeight) {
 			if(parentEl){
 				switch(position){
 					case "bottom":
 						this.element.style.top = (parseInt(this.element.style.top) - this.element.offsetHeight - parentEl.offsetHeight - 1) + "px";
 						break;
-					
+
 					default:
 						this.element.style.top = (parseInt(this.element.style.top) - this.element.offsetHeight + parentEl.offsetHeight + 1) + "px";
 				}
-				
+
 			}else{
-				this.element.style.top = (parseInt(this.element.style.top) - this.element.offsetHeight) + "px";
+				let menuHeight = this.element.offsetHeight;
+				if(menuHeight > offsetHeight){
+					this.element.style.top = "0px";
+					this.element.style.height = offsetHeight + "px";
+				}else{
+					let newTop = y - menuHeight;
+					if(newTop < 0){
+						newTop = offsetHeight - menuHeight;
+					}
+					this.element.style.top = newTop + "px";
+				}
 			}
 		}
 	}
@@ -241,8 +252,9 @@ export default class Popup extends CoreFeature{
 		return this;
 	}
 	
+	/** @param {KeyboardEvent} e */
 	_escapeCheck(e){
-		if(e.keyCode == 27){
+		if(e.key == 27){
 			this.hide();
 		}
 	}

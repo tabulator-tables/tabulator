@@ -27,7 +27,9 @@ export default class FrozenRows extends Module{
 
 		this.topElement.classList.add("tabulator-frozen-rows-holder");
 		
-		fragment.appendChild(document.createElement("br"));
+		// Replaced by adding padding-top to the tabulator-frozen-rows-holder
+		// See https://github.com/olifolkerd/tabulator/pull/4809
+		//fragment.appendChild(document.createElement("br"));
 		fragment.appendChild(this.topElement);
 
 		// this.table.columnManager.element.append(this.topElement);

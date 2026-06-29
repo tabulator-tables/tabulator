@@ -411,7 +411,7 @@ export default class ColumnCalcs extends Module{
 
 			if(hasDataTreeColumnCalcs && row.modules.dataTree?.open){
 				this.rowsToData(dataTree.getFilteredTreeChildren(row)).forEach(dataRow =>{
-					data.push(row);
+					data.push(dataRow);
 				});
 			}
 		});
@@ -457,12 +457,12 @@ export default class ColumnCalcs extends Module{
 				
 				if(column.definition[pos + "CalcFormatter"] && this.table.modExists("format")){
 					this.genColumn.modules.format = {
-						formatter: this.table.modules.format.getFormatter(column.definition[pos + "CalcFormatter"]),
+						formatter: this.table.modules.format.lookupFormatter(column.definition[pos + "CalcFormatter"]),
 						params: column.definition[pos + "CalcFormatterParams"] || {},
 					};
 				}else{
 					this.genColumn.modules.format = {
-						formatter: this.table.modules.format.getFormatter("plaintext"),
+						formatter: this.table.modules.format.lookupFormatter("plaintext"),
 						params:{}
 					};
 				}

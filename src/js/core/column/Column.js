@@ -640,6 +640,9 @@ export default class Column extends CoreFeature{
 			});
 			
 			this.contentElement.style.maxWidth = (childWidth - 1) + "px";
+			if (this.table.initialized) {
+				this.element.style.width = childWidth + "px";
+			}
 			
 			if(this.parent.isGroup){
 				this.parent.matchChildWidths();
@@ -904,10 +907,15 @@ export default class Column extends CoreFeature{
 			
 			if(maxWidth){
 				var setTo = maxWidth + 1;
-				if (this.maxInitialWidth && !force) {
-					setTo = Math.min(setTo, this.maxInitialWidth);
+				
+				if(force){
+					this.setWidth(setTo);
+				}else{
+					if (this.maxInitialWidth && !force) {
+						setTo = Math.min(setTo, this.maxInitialWidth);
+					}
+					this.setWidthActual(setTo);
 				}
-				this.setWidthActual(setTo);
 			}
 		}
 	}

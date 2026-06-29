@@ -163,12 +163,15 @@ export default class Row extends CoreFeature{
 
 	calcMaxHeight(){
 		var maxHeight = 0;
+
 		this.cells.forEach(function(cell){
 			var height = cell.getHeight();
+
 			if(height > maxHeight){
 				maxHeight = height;
 			}
 		});
+
 		return maxHeight;
 	}
 	
@@ -264,15 +267,12 @@ export default class Row extends CoreFeature{
 			}
 			
 			newRowData = this.chain("row-data-changing", [this, tempData, updatedData], null, updatedData);
-			
-			//set data
-			for (let attrname in newRowData) {
-				this.data[attrname] = newRowData[attrname];
-			}
-			
-			this.dispatch("row-data-save-after", this);
-			
-			//update affected cells only
+
+			// compute cells to update
+			// This must be done prior to updating the row data otherwise uninitialized cells get
+			// generated directly with the updated data, which prevents the run of callbacks
+			// registered on cells updates (e.g. mutators)
+			const cellsToUpdate = [];
 			for (let attrname in updatedData) {
 				
 				let columns = this.table.columnManager.getColumnsByFieldRoot(attrname);
@@ -283,15 +283,27 @@ export default class Row extends CoreFeature{
 					if(cell){
 						let value = column.getFieldValue(newRowData);
 						if(cell.getValue() !== value){
-							cell.setValueProcessData(value);
-							
-							if(visible){
-								cell.cellRendered();
-							}
+							cellsToUpdate.push([cell, value]);
 						}
 					}
 				});
 			}
+			
+			//set data
+			for (let attrname in newRowData) {
+				this.data[attrname] = newRowData[attrname];
+			}
+			
+			this.dispatch("row-data-save-after", this);
+			
+			//update affected cells only
+			cellsToUpdate.forEach(([cell, value]) => {
+				cell.setValueProcessData(value);
+							
+				if(visible){
+					cell.cellRendered();
+				}
+			});
 			
 			//Partial reinitialization if visible
 			if(visible){

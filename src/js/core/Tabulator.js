@@ -14,6 +14,7 @@ import ExternalEventBus from './tools/ExternalEventBus.js';
 import InternalEventBus from './tools/InternalEventBus.js';
 
 import DeprecationAdvisor from './tools/DeprecationAdvisor.js';
+import DependencyRegistry from './tools/DependencyRegistry.js';
 
 import ModuleBinder from './tools/ModuleBinder.js';
 
@@ -66,6 +67,8 @@ class Tabulator extends ModuleBinder{
 		
 		this.deprecationAdvisor = new DeprecationAdvisor(this);
 		this.optionsList = new OptionsList(this, "table constructor");
+
+		this.dependencyRegistry = new DependencyRegistry(this);
 		
 		this.initialized = false;
 		this.destroyed = false;
@@ -123,9 +126,9 @@ class Tabulator extends ModuleBinder{
 		this.interactionMonitor = new InteractionMonitor(this);
 		
 		this.dataLoader.initialize();
-		// this.columnManager.initialize();
-		// this.rowManager.initialize();
 		this.footerManager.initialize();
+
+		this.dependencyRegistry.initialize();
 	}
 	
 	//convert deprecated functionality to new functions
@@ -229,6 +232,7 @@ class Tabulator extends ModuleBinder{
 		
 		element.classList.add("tabulator");
 		element.setAttribute("role", "grid");
+		element.setAttribute("aria-owns", "tabulator-table-body");
 		
 		//empty element
 		while(element.firstChild) element.removeChild(element.firstChild);
@@ -315,6 +319,7 @@ class Tabulator extends ModuleBinder{
 		//clear DOM
 		while(element.firstChild) element.removeChild(element.firstChild);
 		element.classList.remove("tabulator");
+		element.removeAttribute("tabulator-layout");
 
 		this.externalEvents.dispatch("tableDestroyed");
 	}
@@ -848,6 +853,20 @@ class Tabulator extends ModuleBinder{
 	setHeight(height){
 		this.options.height = isNaN(height) ? height : height + "px";
 		this.element.style.height = this.options.height;
+		this.rowManager.initializeRenderer();
+		this.rowManager.redraw(true);
+	}
+
+	setMaxHeight(maxHeight){
+		this.options.maxHeight = isNaN(maxHeight) ? maxHeight : maxHeight + "px";
+		this.element.style.maxHeight = this.options.maxHeight;
+		this.rowManager.initializeRenderer();
+		this.rowManager.redraw(true);
+	}
+
+	setMinHeight(minHeight){
+		this.options.minHeight = isNaN(minHeight) ? minHeight : minHeight + "px";
+		this.element.style.minHeight = this.options.minHeight;
 		this.rowManager.initializeRenderer();
 		this.rowManager.redraw(true);
 	}
