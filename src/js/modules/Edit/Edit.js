@@ -711,13 +711,16 @@ export default class Edit extends Module{
 		}
 		
 		if(!cell.column.modules.edit.blocked){
-			if(e){
-				e.stopPropagation();
-			}
-			
 			allowEdit = this.allowEdit(cell);
-			
+
 			if(allowEdit || forceEdit){
+				//only stop event propagation once we know the cell will be edited,
+				//otherwise non-editable cells would swallow clicks meant for other
+				//handlers such as the cellClick callback (#4421)
+				if(e){
+					e.stopPropagation();
+				}
+
 				self.cancelEdit();
 				
 				self.currentCell = cell;
