@@ -1,3 +1,4 @@
+import Clipboard from '../../../src/js/modules/Clipboard/Clipboard.js';
 import pasteParsers from '../../../src/js/modules/Clipboard/defaults/pasteParsers.js';
 
 describe('Clipboard table paste parser', function(){
@@ -7,6 +8,13 @@ describe('Clipboard table paste parser', function(){
 	];
 	const context = {table:{columnManager:{columns, columnsByIndex:columns}}};
 	const parse = input => pasteParsers.table.call(context, input);
+
+	test.each(['"quoted"', '"literal', "a\tb", "line 1\r\nline 2", "", {name:"test"}])('round-trips copied cell value %j', function(value){
+		const text = Clipboard.prototype.generatePlainContent.call({}, [
+			{columns:[{value:"001"}, {value}]},
+		]);
+		expect(parse(text)).toEqual([{x:"001", y:typeof value === "object" ? JSON.stringify(value) : value}]);
+	});
 
 	test.each(["\n", "\r\n", "\r"])("parses records separated by %j", function(ending){
 		expect(parse("x1\ty1" + ending + "x2\ty2" + ending)).toEqual([

@@ -54,3 +54,32 @@ test("an unterminated quoted cell reports an error without changing data", async
 	await expect.poll(() => page.evaluate(() => window.pasteError)).toBe(input);
 	expect(await page.evaluate(() => window.testTable.getData())).toEqual([{x:"keep", y:"existing"}]);
 });
+
+
+for(const action of ["replace", "range"]){
+	test(`Tabulator copied values round-trip through ${action} paste`, async({page}) => {
+		await openTable(page, action);
+		if(action === "range"){
+			await page.locator('.tabulator-cell[tabulator-field="x"]').first().click();
+		}
+		const value = '"quoted"\tline 1\r\nline 2';
+		const text = await page.evaluate(value => window.testTable.module("clipboard").generatePlainContent([
+			{columns:[{value:"001"}, {value}]},
+		]), value);
+		expect(await paste(page, text)).toBe(true);
+		const expected = [{x:"001", y:value}];
+		if(action === "range"){
+			expected.push({x:"untouched", y:"sentinel"});
+		}
+		await expect.poll(() => page.evaluate(() => window.testTable.getData())).toEqual(expected);
+	});
+}
+
+test("a range paste terminator does not overwrite the following row", async({page}) => {
+	await openTable(page, "range");
+	await page.locator('.tabulator-cell[tabulator-field="x"]').first().click();
+	expect(await paste(page, "x1\ty1\r\n")).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.testTable.getData())).toEqual([
+		{x:"x1", y:"y1"}, {x:"untouched", y:"sentinel"},
+	]);
+});
