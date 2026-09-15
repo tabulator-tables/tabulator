@@ -839,16 +839,17 @@ class Tabulator extends ModuleBinder{
 	
 	//scroll to column in DOM
 	scrollToColumn(field, position, ifVisible){
-		return new Promise((resolve, reject) => {
-			var column = this.columnManager.findColumn(field);
-			
-			if(column){
-				return this.columnManager.scrollToColumn(column, position, ifVisible);
-			}else{
-				console.warn("Scroll Error - No matching column found:", field);
-				return Promise.reject("Scroll Error - No matching column found");
-			}
-		});
+		var column = this.columnManager.findColumn(field);
+
+		// Return the promise directly, like scrollToRow. A value returned from a
+		// Promise executor is ignored, so the wrapper promise never settled.
+		// https://github.com/tabulator-tables/tabulator/issues/4853
+		if(column){
+			return this.columnManager.scrollToColumn(column, position, ifVisible);
+		}else{
+			console.warn("Scroll Error - No matching column found:", field);
+			return Promise.reject("Scroll Error - No matching column found");
+		}
 	}
 	
 	//////////// General Public Functions ////////////
