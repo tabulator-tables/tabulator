@@ -14,6 +14,7 @@ export default class Menu extends Module{
 		this.rootPopup = null;
 		
 		this.columnSubscribers = {};
+		this.headerElements = new WeakMap();
 		
 		// this.registerTableOption("menuContainer", undefined); //deprecated
 		
@@ -41,6 +42,7 @@ export default class Menu extends Module{
 		this.initializeGroupWatchers();
 		
 		this.subscribe("column-init", this.initializeColumn.bind(this));
+		this.subscribe("column-title-rendered", this._renderHeaderElement.bind(this));
 	}
 	
 	deprecatedOptionsCheck(){
@@ -149,7 +151,16 @@ export default class Menu extends Module{
 			this.loadMenuEvent(column.definition.headerMenu, e, column);
 		});
 		
-		column.titleElement.insertBefore(headerMenuEl, column.titleElement.firstChild);
+		this.headerElements.set(column, headerMenuEl);
+		this._renderHeaderElement(column, column.titleElement);
+	}
+
+	_renderHeaderElement(column, titleElement){
+		var element = this.headerElements.get(column);
+
+		if(element){
+			titleElement.insertBefore(element, titleElement.firstChild);
+		}
 	}
 	
 	loadMenuTableCellEvent(option, e, cell){
