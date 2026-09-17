@@ -384,4 +384,23 @@ describe("VirtualDomVertical rendering while the table is not visible", () => {
         expect(renderer.vDomBottom).toBe(bottom);
         expect(holder.scrollTop).toBe(scrollTop);
     });
+
+    it("renders from the top when the rendered rows were torn down and the window still points at live rows", () => {
+        const {renderer, rows, tableElement, holder} = buildTable({rowCount: 1000});
+
+        renderer.renderRows();
+        renderer.scrollToRow(rows[500]);
+
+        expect(renderer.vDomTop).toBeGreaterThan(0);
+
+        // the data was reloaded while the table was hidden: the rendered rows are gone and the
+        // scroll position was reset, so the stale window cannot be used as an anchor
+        tableElement.innerHTML = "";
+        holder.scrollTop = 0;
+
+        renderer.rerenderRows();
+
+        expect(renderer.vDomTop).toBe(0);
+        expect(holder.scrollTop).toBe(0);
+    });
 });

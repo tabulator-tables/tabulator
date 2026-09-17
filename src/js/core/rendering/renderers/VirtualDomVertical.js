@@ -78,7 +78,15 @@ export default class VirtualDomVertical extends Renderer{
 		for(var i = this.vDomTop; i <= this.vDomBottom; i++){
 
 			if(rows[i]){
-				var diff = scrollTop - rows[i].getElement().offsetTop;
+				var anchorEl = rows[i].getElement();
+
+				//a detached row reports a zero offsetTop, which would be used as a bogus
+				//anchor offset and throw the rendered window and scroll position off
+				if(!anchorEl.parentNode){
+					continue;
+				}
+
+				var diff = scrollTop - anchorEl.offsetTop;
 
 				if(topOffset === false || Math.abs(diff) < topOffset){
 					topOffset = diff;
@@ -99,9 +107,12 @@ export default class VirtualDomVertical extends Renderer{
 
 		if(this.rows().length){
 			if(topRow === false){
-				//no rendered row to anchor on, start from the top if nothing was rendered before,
-				//otherwise the rendered window is past the end of the shrunken data so anchor on the last row
-				topRow = rows.length ? this.rows().length - 1 : 0;
+				//no rendered row to anchor on. When the window still points at live rows the rendered
+				//rows were torn down (the data was reloaded, or the render was skipped because the
+				//table was hidden) so the window means nothing and the table starts from the top;
+				//otherwise the window is past the end of the shrunken data so keep the view at the end
+				topRow = rows[this.vDomTop] ? 0 : (rows.length ? this.rows().length - 1 : 0);
+				topOffset = 0;
 			}
 
 			this._virtualRenderFill(topRow, true, topOffset || 0);
