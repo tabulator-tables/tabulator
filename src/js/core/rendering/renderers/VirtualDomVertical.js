@@ -250,6 +250,15 @@ export default class VirtualDomVertical extends Renderer{
 		avgRowHeight = this.table.options.rowHeight, 
 		resized = true;
 
+		//the table is not visible so nothing can be measured or rendered: bail out before the
+		//rendered rows are torn down and the render window is updated, otherwise the table is
+		//left empty holding a stale window that the next (visible) redraw anchors on and
+		//mispositions (an iframe hidden with display:none still receives resize observer
+		//callbacks, which trigger a redraw in exactly this state)
+		if(!Helpers.elVisible(this.elementVertical)){
+			return;
+		}
+
 		position = position || 0;
 
 		offset = offset || 0;
