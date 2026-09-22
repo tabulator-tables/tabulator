@@ -625,6 +625,9 @@ export default class ColumnManager extends CoreFeature {
 				//check column visibility
 				if(!ifVisible){
 					if(offset > 0 && offset + colEl.offsetWidth < this.element.clientWidth){
+						// Resolve before returning early, like scrollToRowPosition.
+						// https://github.com/tabulator-tables/tabulator/issues/4853
+						resolve();
 						return false;
 					}
 				}
