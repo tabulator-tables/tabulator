@@ -316,6 +316,8 @@ export default class Column extends CoreFeature{
 			default:
 				el.innerHTML = contents;
 		}
+
+		this.dispatch("column-title-rendered", this, el);
 	}
 	
 	//build header element for column group
