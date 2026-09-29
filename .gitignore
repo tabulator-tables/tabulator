@@ -11,3 +11,6 @@ npm-debug.log
 /playwright/.cache/
 
 dist/
+
+# Benchmarks
+/bench-results/

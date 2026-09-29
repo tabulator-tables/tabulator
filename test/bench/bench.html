@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Tabulator Benchmark Fixture</title>
+	<!--
+		Deliberately no <script> or <link> tags. The runner (run.mjs) injects the
+		Tabulator build under test with page.addStyleTag / page.addScriptTag so the
+		same fixture can be pointed at any dist/ folder, and then injects
+		scenarios.js.
+	-->
+	<style>
+		html, body {
+			margin: 0;
+			padding: 0;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size: 13px;
+		}
+		#bench-root {
+			padding: 16px;
+		}
+		#bench-table {
+			width: 1000px;
+		}
+	</style>
+</head>
+<body>
+	<div id="bench-root">
+		<div id="bench-table"></div>
+	</div>
+</body>
+</html>

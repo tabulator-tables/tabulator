@@ -1,0 +1,145 @@
+name: Benchmarks
+
+# Runs the browser benchmarks in test/bench.
+#
+# - Pull requests labelled "perf": build the PR head and its base commit, run
+#   both interleaved in one process, and post (or update) a comparison table as
+#   a PR comment. Results never fail the build; they are information for the
+#   reviewer.
+# - Pushes to master: run the suite once and append the numbers to the
+#   "benchmarks" branch via github-action-benchmark, which keeps the history
+#   and renders a chart at <pages url>/dev/bench/. It also comments on the
+#   commit when a case regresses by more than the alert threshold against the
+#   previous master run.
+# - Manual dispatch: same as the pull request flow against a chosen base ref.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base ref to compare against"
+        required: false
+        default: "master"
+      runs:
+        description: "Measured iterations per case"
+        required: false
+        default: "9"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bench-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: Browser benchmarks
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'perf')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RUNS: ${{ github.event.inputs.runs || '9' }}
+    steps:
+      - name: Check out head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build head
+        run: npm run build
+
+      - name: Resolve base commit
+        if: github.event_name != 'push'
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            git fetch origin "${{ github.event.inputs.base }}"
+            echo "sha=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build base
+        if: github.event_name != 'push'
+        run: |
+          git worktree add ../base-src "${{ steps.base.outputs.sha }}"
+          cd ../base-src
+          npm ci
+          npm run build
+
+      - name: Run benchmarks (base vs head)
+        if: github.event_name != 'push'
+        run: node test/bench/run.mjs --dist base=../base-src/dist --dist head=dist --runs "$RUNS" --out bench-results
+
+      - name: Run benchmarks (head only)
+        if: github.event_name == 'push'
+        run: node test/bench/run.mjs --dist head=dist --runs "$RUNS" --out bench-results
+
+      - name: Compare
+        if: github.event_name != 'push'
+        run: |
+          node test/bench/compare.mjs bench-results/base.json bench-results/head.json \
+            --title "Benchmark results (tier 1)" --out bench-results/comment.md
+          cat bench-results/comment.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post comparison on the pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- tabulator-bench -->';
+            const body = marker + '\n' + fs.readFileSync('bench-results/comment.md', 'utf8');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((c) => c.body && c.body.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Record history on master
+        if: github.event_name == 'push'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Tabulator browser benchmarks
+          tool: customSmallerIsBetter
+          output-file-path: bench-results/head.gab.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: benchmarks
+          benchmark-data-dir-path: dev/bench
+          auto-push: true
+          alert-threshold: "120%"
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+
+      - name: Upload raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results-${{ github.sha }}
+          path: bench-results/
+          retention-days: 90

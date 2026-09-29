@@ -26,12 +26,18 @@ dependencies. Docs/demos live at <http://tabulator.info>.
 - `test/unit/` – Jest specs, run in jsdom. `modules/<Name>.spec.js`
   mirrors the module layout. `setup.js` adds a few DOM helpers.
 - `test/e2e/` – Playwright suite. Slow; needs a build first.
+- `test/bench/` – browser benchmarks (Playwright + headless Chromium).
+  Not tests; see `test/bench/README.md`.
 
 ## Commands
 
 - `npm run test:unit` – Jest only (fast, jsdom).
 - `npm run test:e2e` – builds then runs Playwright.
 - `npm test` – both.
+- `npm run bench` – benchmark `dist/` (needs a build first);
+  `--dist base=<path> --dist head=<path>` compares two builds and
+  `npm run bench:compare` prints the table. CI runs it on PRs labelled
+  `perf`.
 - `npm run lint` – ESLint over `src/`, with `--fix`.
 - `npm run build` – Rollup build (also runs lint via `prebuild`).
 - `npm run dev` / `dev:css` / `dev:esm` / `dev:umd` / `dev:wrappers` –
