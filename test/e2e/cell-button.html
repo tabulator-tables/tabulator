@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Tabulator Cell Button Test</title>
+	<link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+	<script src="../../dist/js/tabulator.js"></script>
+	<style>
+	body {
+		padding: 20px;
+		font-family: Arial, sans-serif;
+	}
+	#test-table {
+		width: 900px;
+		height: 300px;
+	}
+	</style>
+</head>
+<body>
+	<h1>Tabulator Cell Button Test</h1>
+	<div id="test-table"></div>
+	<div id="log"></div>
+
+	<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		window.linkClicks = [];
+
+		window.testTable = new Tabulator("#test-table", {
+			data: [
+				{ id: 1, name: "Alice", manager: 2, due: "2026-10-07", starts: "09:30", updated: "2026-10-07 09:05:30" },
+				{ id: 2, name: "Bob", manager: null, due: null, starts: null, updated: null },
+			],
+			columns: [
+				{ title: "ID", field: "id", width: 60 },
+				{ title: "Name", field: "name", editor: "input", width: 140 },
+				{ title: "Manager", field: "manager", width: 120, cellButton: {
+					icon: "&#8599;",
+					label: "Go to manager",
+					visible: (cell) => cell.getValue() !== null,
+					action: (e, cell) => { window.linkClicks.push(cell.getValue()); },
+				} },
+				{ title: "Due", field: "due", editor: "input", width: 160, cellButton: "date" },
+				{ title: "Starts", field: "starts", editor: "input", width: 140, cellButton: "time" },
+				{ title: "Updated", field: "updated", editor: "input", width: 220, cellButton: "datetime" },
+			],
+		});
+	});
+	</script>
+</body>
+</html>

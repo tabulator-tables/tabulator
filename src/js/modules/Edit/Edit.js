@@ -84,6 +84,7 @@ export default class Edit extends Module{
 		// Add event handlers for other modules to access editing state and functionality
 		this.subscribe("edit-check-editing", this.checkEditing.bind(this));
 		this.subscribe("edit-cancel-cell", this.cancelEditEvent.bind(this));
+		this.subscribe("edit-value", this.editValue.bind(this));
 
 		if(Object.keys(this.table.options).includes("editorEmptyValue")){
 			this.convertEmptyValues = true;
@@ -834,12 +835,37 @@ export default class Edit extends Module{
 		}
 	}
 
+	//apply a value from an editing control outside the cell (eg. a cell button picker) as though
+	//it had come from the cell's editor, so it is validated and tracked as an edit. Returns false
+	//if validation rejected the value
+	editValue(cell, value){
+		var valid;
+
+		if(this.currentCell === cell){
+			this.cancelEdit();
+		}
+
+		valid = this.chain("edit-success", [cell, value], true, true);
+
+		if(valid !== true && this.table.options.validationMode !== "highlight"){
+			return false;
+		}
+
+		value = this.transformEmptyValues(value, cell);
+
+		this.setEdited(cell);
+
+		cell.setValue(value, true);
+
+		return true;
+	}
+
 	emptyValueCheck(value){
 		return value === "" || value === null || typeof value === "undefined";
 	}
 
 	transformEmptyValues(value, cell){
-		var mod = cell.column.modules.edit, 
+		var mod = cell.column.modules.edit || {},
 		convert = mod.convertEmptyValues || this.convertEmptyValues,
 		checkFunc;
 		

@@ -1,8 +1,10 @@
 export {default as AccessorModule} from '../../modules/Accessor/Accessor.js';
 export {default as AjaxModule} from '../../modules/Ajax/Ajax.js';
+export {default as CellButtonModule} from '../../modules/CellButton/CellButton.js';
 export {default as ClipboardModule} from '../../modules/Clipboard/Clipboard.js';
 export {default as ColumnCalcsModule} from '../../modules/ColumnCalcs/ColumnCalcs.js';
 export {default as DataTreeModule} from '../../modules/DataTree/DataTree.js';
+export {default as DateTimePickerModule} from '../../modules/DateTimePicker/DateTimePicker.js';
 export {default as DownloadModule} from '../../modules/Download/Download.js';
 export {default as EditModule} from '../../modules/Edit/Edit.js';
 export {default as ExportModule} from '../../modules/Export/Export.js';

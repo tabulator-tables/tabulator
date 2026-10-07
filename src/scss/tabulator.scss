@@ -948,6 +948,69 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 			}
 		}
 		
+		//floating cell buttons, only added to the hovered cell
+		.tabulator-cell-buttons{
+			position:absolute;
+			top:0;
+			right:0;
+			bottom:0;
+			
+			display:flex;
+			align-items:center;
+			gap:2px;
+			
+			padding:0 3px;
+			
+			&.tabulator-cell-buttons-left{
+				right:auto;
+				left:0;
+			}
+		}
+		
+		.tabulator-cell-button{
+			display:inline-flex;
+			align-items:center;
+			justify-content:center;
+			box-sizing:border-box;
+			
+			min-width:20px;
+			height:20px;
+			max-height:100%;
+			margin:0;
+			padding:0 3px;
+			
+			border:1px solid $rowBorderColor;
+			border-radius:3px;
+			
+			background:$rowBackgroundColor;
+			color:$rowTextColor;
+			
+			font-family:inherit;
+			font-size:12px;
+			line-height:1;
+			
+			cursor:pointer;
+			user-select:none;
+			
+			svg{
+				display:block;
+				width:14px;
+				height:14px;
+			}
+			
+			&.tabulator-cell-button-active{
+				border-color:$editBoxColor;
+				color:$editBoxColor;
+			}
+			
+			@media (hover:hover) and (pointer:fine){
+				&:hover{
+					border-color:$editBoxColor;
+					color:$editBoxColor;
+				}
+			}
+		}
+		
 		//movable row handle
 		&.tabulator-row-handle{
 			display: inline-flex;
@@ -1389,6 +1452,177 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 		
 		&.tabulator-edit-list-group-level-5{
 			padding-left:36px;
+		}
+	}
+}
+
+.tabulator-datetime-picker{
+	//text drawn on the edit box color, which is light in some themes
+	$highlightTextColor:#fff;
+	
+	@if color.channel($editBoxColor, "lightness", $space: hsl) > 55%{
+		$highlightTextColor:#000;
+	}
+	
+	padding:6px;
+	
+	color:$rowTextColor;
+	font-size:$textSize;
+	
+	user-select:none;
+	
+	&.tabulator-datetime-picker-invalid{
+		box-shadow:inset 0 0 0 1px $errorColor;
+	}
+	
+	button, input{
+		box-sizing:border-box;
+		
+		font-family:inherit;
+		font-size:inherit;
+	}
+	
+	input{
+		padding:3px;
+		
+		border:1px solid $rowBorderColor;
+		border-radius:3px;
+		
+		background:$rowBackgroundColor;
+		color:$rowTextColor;
+		
+		&:focus{
+			outline:1px solid $editBoxColor;
+			border-color:$editBoxColor;
+		}
+	}
+	
+	.tabulator-datetime-picker-header{
+		display:flex;
+		align-items:center;
+		gap:4px;
+		
+		margin-bottom:4px;
+	}
+	
+	.tabulator-datetime-picker-month{
+		flex:1;
+		
+		font-weight:bold;
+		text-align:center;
+	}
+	
+	.tabulator-datetime-picker-year{
+		width:5em;
+	}
+	
+	.tabulator-datetime-picker-nav, .tabulator-datetime-picker-day, .tabulator-datetime-picker-action{
+		border:1px solid transparent;
+		border-radius:3px;
+		
+		background:transparent;
+		color:inherit;
+		
+		cursor:pointer;
+		
+		&:focus-visible{
+			outline:1px solid $editBoxColor;
+		}
+		
+		@media (hover:hover) and (pointer:fine){
+			&:hover{
+				background:$rowAltBackgroundColor;
+			}
+		}
+	}
+	
+	.tabulator-datetime-picker-nav{
+		width:26px;
+		height:26px;
+		
+		font-size:18px;
+		line-height:1;
+	}
+	
+	.tabulator-datetime-picker-calendar{
+		border-collapse:collapse;
+		
+		th{
+			padding:2px 0 4px 0;
+			
+			font-size:11px;
+			font-weight:normal;
+			text-align:center;
+			
+			opacity:.7;
+		}
+		
+		td{
+			padding:1px;
+		}
+	}
+	
+	.tabulator-datetime-picker-day{
+		width:30px;
+		height:26px;
+		padding:0;
+		
+		&.tabulator-datetime-picker-day-other{
+			opacity:.45;
+		}
+		
+		&.tabulator-datetime-picker-day-today{
+			border-color:$editBoxColor;
+		}
+		
+		&.tabulator-datetime-picker-day-selected, &.tabulator-datetime-picker-day-selected:hover{
+			background:$editBoxColor;
+			color:$highlightTextColor;
+			
+			opacity:1;
+		}
+	}
+	
+	.tabulator-datetime-picker-time{
+		display:flex;
+		align-items:center;
+		justify-content:center;
+		gap:3px;
+		
+		padding:4px 0;
+	}
+	
+	.tabulator-datetime-picker-time-input{
+		width:2.6em;
+		
+		text-align:center;
+	}
+	
+	.tabulator-datetime-picker-footer{
+		display:flex;
+		align-items:center;
+		gap:4px;
+		
+		margin-top:4px;
+		padding-top:6px;
+		
+		border-top:1px solid $rowBorderColor;
+	}
+	
+	.tabulator-datetime-picker-spacer{
+		flex:1;
+	}
+	
+	.tabulator-datetime-picker-action{
+		padding:3px 8px;
+		
+		border-color:$rowBorderColor;
+		
+		&.tabulator-datetime-picker-apply, &.tabulator-datetime-picker-apply:hover{
+			border-color:$editBoxColor;
+			
+			background:$editBoxColor;
+			color:$highlightTextColor;
 		}
 	}
 }

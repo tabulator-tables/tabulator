@@ -47,6 +47,8 @@ data is inline (no AJAX).
 | 8 | `08-frozen-responsive.html` | Frozen, movable, resizable and responsive-collapse columns |
 | 9 | `09-tree-data.html` | Nested tree data (`_children`), expand/collapse, tree-wide totals |
 | 10 | `10-full-demo.html` | Kitchen sink: editing, grouping, calcs, selection, add/delete, download, persistence |
+| 11 | `11-popup-positioning.html` | Popups and menus kept on screen near viewport edges and inside scrollable containers |
+| 12 | `12-cell-buttons.html` | Floating cell buttons: a link, a popup editor, and the date / time / datetime pickers |
 
 ## Dependencies
 

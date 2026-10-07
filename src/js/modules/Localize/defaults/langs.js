@@ -32,6 +32,22 @@ export default {
 		"headerFilters":{
 			"default":"filter column...",
 			"columns":{}
-		}
+		},
+		"dateTimePicker":{
+			"date":"Choose date",
+			"time":"Choose time",
+			"datetime":"Choose date and time",
+			"prevMonth":"Previous month",
+			"nextMonth":"Next month",
+			"year":"Year",
+			"hours":"Hours",
+			"minutes":"Minutes",
+			"seconds":"Seconds",
+			"today":"Today",
+			"now":"Now",
+			"clear":"Clear",
+			"cancel":"Cancel",
+			"apply":"OK",
+		},
 	},
 };
