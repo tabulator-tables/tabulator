@@ -1,19 +1,14 @@
+import parseRows from '../parseRows.js';
+
 export default {
 	table:function(clipboard){
-		var data = [],
+		var data = parseRows(clipboard),
 		headerFindSuccess = true,
 		columns = this.table.columnManager.columns,
 		columnMap = [],
 		rows = [];
 		
-		//get data from clipboard into array of columns and rows.
-		clipboard = clipboard.split("\n");
-		
-		clipboard.forEach(function(row){
-			data.push(row.split("\t"));
-		});
-		
-		if(data.length && !(data.length === 1 && data[0].length < 2)){
+		if(data && data.length && !(data.length === 1 && data[0].length < 2 && !/[\r\n]$/.test(clipboard))){
 			
 			//check if headers are present by title
 			data[0].forEach(function(value){

@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Clipboard record separators</title>
+	<link rel="stylesheet" href="../../dist/css/tabulator.min.css">
+	<script src="../../dist/js/tabulator.js"></script>
+</head>
+<body>
+	<div id="table"></div>
+	<script>
+		const action = new URLSearchParams(location.search).get("action") || "insert";
+		window.testTable = new Tabulator("#table", {
+			data: action === "range" ? [{x:"keep", y:"existing"}, {x:"untouched", y:"sentinel"}] : [{x:"keep", y:"existing"}],
+			index: "x",
+			clipboard: true,
+			clipboardPasteAction: action,
+			clipboardPasteParser: action === "range" ? "range" : "table",
+			selectableRange: action === "range",
+			columns: [{title:"First", field:"x"}, {title:"Second", field:"y"}],
+		});
+		window.testTable.on("clipboardPasteError", function(data){ window.pasteError = data; });
+	</script>
+</body>
+</html>

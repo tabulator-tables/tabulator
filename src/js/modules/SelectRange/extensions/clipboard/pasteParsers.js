@@ -1,3 +1,5 @@
+import parseRows from '../../../Clipboard/parseRows.js';
+
 export default {
 	range:function(clipboard){
 		var data = [],
@@ -15,14 +17,9 @@ export default {
 			}
 			
 			if(startCell){
-				//get data from clipboard into array of columns and rows.
-				clipboard = clipboard.split("\n");
-				
-				clipboard.forEach(function(row){
-					data.push(row.split("\t"));
-				});
-				
-				if(data.length){
+				data = parseRows(clipboard);
+
+				if(data && data.length){
 					columnMap = this.table.columnManager.getVisibleColumnsByIndex();
 					startCol = columnMap.indexOf(startCell.column);
 

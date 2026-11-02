@@ -110,7 +110,7 @@ describe('Clipboard', function(){
 		];
 		
 		const result = clipboard.generatePlainContent(testData);
-		expect(result).toBe("text\t123\t\t\t{\"test\":\"object\"}");
+		expect(result).toBe('text\t123\t\t\t"{""test"":""object""}"');
 	});
 
 	test('reset clears custom selection and blocks copying', function(){
