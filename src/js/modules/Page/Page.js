@@ -230,8 +230,9 @@ export default class Page extends Module{
 		return rows;
 	}
 	
+	// https://github.com/tabulator-tables/tabulator/issues/4827
 	rowsUpdated(){
-		this.refreshData(true, "all");
+		this.refreshData(true, "display");
 	}
 	
 	createElements(){
