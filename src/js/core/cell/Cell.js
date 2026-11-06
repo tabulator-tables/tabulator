@@ -34,7 +34,7 @@ export default class Cell extends CoreFeature{
 
 		this._configureCell();
 
-		this.setValueActual(this.column.getFieldValue(this.row.data));
+		this.value = this.column.getFieldValue(this.row.data);
 
 		this.initialValue = this.value;
 	}
