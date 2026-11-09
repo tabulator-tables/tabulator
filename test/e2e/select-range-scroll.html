@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Tabulator Test</title>
+		<link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+		<script src="../../dist/js/tabulator.js"></script>
+	</head>
+	<body>
+		<div id="test-table"></div>
+
+		<script>
+		const columns = [];
+		const data = [];
+
+		for (let c = 0; c < 30; c++) {
+			columns.push({ title: "C" + c, field: "c" + c, width: 120, editor: "input" });
+		}
+
+		for (let r = 0; r < 1000; r++) {
+			const row = { id: r };
+
+			for (let c = 0; c < 30; c++) {
+				row["c" + c] = r + "/" + c;
+			}
+
+			data.push(row);
+		}
+
+		window.testTable = new Tabulator("#test-table", {
+			data,
+			columns,
+			height: 300,
+			editTriggerEvent: "dblclick",
+			renderHorizontal: "virtual",
+			selectableRange: true,
+			selectableRangeClearCells: true,
+		});
+		</script>
+	</body>
+</html>
