@@ -42,6 +42,11 @@ Tabulator is free and open source under the MIT license. If your organization ru
 See [Commercial Support](https://tabulator.info/commercial-support/) for plan details, or email [sales@tabulator.info](mailto:sales@tabulator.info).
 
 
+Newsletter
+================================
+Get new releases, features and tips from the Tabulator team by email: [subscribe to the Tabulator newsletter](https://tabulator.info/newsletter/subscribe/).
+
+
 Setup
 ================================
 Setting up tabulator could not be simpler.
