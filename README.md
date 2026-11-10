@@ -35,6 +35,13 @@ Frontend Framework Support
 Tabulator is built to work with all the major front end JavaScript frameworks including React, Angular and Vue.
 
 
+Commercial Support
+================================
+Tabulator is free and open source under the MIT license. If your organization runs Tabulator in production and needs more than community help, the maintainers offer paid support plans with response-time targets, priority bug fixes, security patches, long-term maintenance and sponsored feature development.
+
+See [Commercial Support](https://tabulator.info/commercial-support/) for plan details, or email [sales@tabulator.info](mailto:sales@tabulator.info).
+
+
 Setup
 ================================
 Setting up tabulator could not be simpler.
