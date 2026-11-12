@@ -85,7 +85,9 @@ export default class ReactiveData extends Module{
 				if(!self.blocked && version === self.currentVersion){
 					self.block("data-unshift");
 					
-					args.forEach((arg) => {
+					// addRowActual(..., true) inserts at the top, so later
+					// arguments must be added first to keep source order.
+					args.slice().reverse().forEach((arg) => {
 						self.table.rowManager.addRowActual(arg, true);
 					});
 					
@@ -180,6 +182,11 @@ export default class ReactiveData extends Module{
 						if(startRow){
 							newRows.forEach((rowData) => {
 								self.table.rowManager.addRowActual(rowData, true, startRow, true);
+							});
+						}else if(start >= data.length){
+							// splice at or past the end is an append, not a top insert
+							newRows.forEach((rowData) => {
+								self.table.rowManager.addRowActual(rowData, false, false, true);
 							});
 						}else{
 							newRows = newRows.slice().reverse();

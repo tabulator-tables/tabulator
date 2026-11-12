@@ -114,6 +114,18 @@ describe("ReactiveData reactivity (no framework / plain arrays)", () => {
             expect(mockRowManager.addRowActual).toHaveBeenCalledWith(row, true);
         });
 
+        it("unshift() of several rows keeps source order in the table", () => {
+            const data = [{ id: 10 }, { id: 20 }];
+            reactiveData.watchData(data);
+
+            const first = { id: 1 };
+            const second = { id: 2 };
+            data.unshift(first, second);
+
+            expect(data.map((row) => row.id)).toEqual([1, 2, 10, 20]);
+            expect(mockRowManager.addRowActual.mock.calls.map((call) => call[0])).toEqual([second, first]);
+        });
+
         it("pop() mutates the array and notifies the table", () => {
             const last = { id: 2 };
             const data = [{ id: 1 }, last];
@@ -148,6 +160,17 @@ describe("ReactiveData reactivity (no framework / plain arrays)", () => {
             expect(removed).toEqual([{ id: 2 }]);
             expect(data).toEqual([{ id: 1 }, { id: 9 }, { id: 3 }]);
             expect(mockRowManager.reRenderInPosition).toHaveBeenCalled();
+        });
+
+        it("splice() at the end appends rows in source order", () => {
+            const data = [{ id: 10 }, { id: 20 }];
+            reactiveData.watchData(data);
+
+            const row = { id: 1 };
+            data.splice(data.length, 0, row);
+
+            expect(data.map((r) => r.id)).toEqual([10, 20, 1]);
+            expect(mockRowManager.addRowActual).toHaveBeenCalledWith(row, false, false, true);
         });
     });
 
