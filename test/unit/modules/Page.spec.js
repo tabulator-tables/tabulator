@@ -152,3 +152,62 @@ describe("Page module", () => {
         expect(typeof pageMod.getPageSize()).toBe("number");
     });
 });
+
+// https://github.com/tabulator-tables/tabulator/issues/4827
+describe("Page module with a sorted table", () => {
+    /** @type {TabulatorFull} */
+    let tabulator;
+    const tableData = [
+        { id: 1, first: "Anna", last: "Zeller" },
+        { id: 2, first: "Bert", last: "Dort" },
+        { id: 3, first: "Carl", last: "Meyer" },
+        { id: 4, first: "Dana", last: "Abel" },
+        { id: 5, first: "Emil", last: "Kraus" }
+    ];
+
+    const displayedIds = () => tabulator.rowManager.getDisplayRows().map((row) => row.getData().id);
+
+    beforeEach(async () => {
+        const el = document.createElement("div");
+        el.id = "tabulator";
+        document.body.appendChild(el);
+        tabulator = new TabulatorFull("#tabulator", {
+            data: tableData,
+            columns: [
+                { title: "First name", field: "first" },
+                { title: "Last name", field: "last" }
+            ],
+            pagination: true,
+            paginationSize: 10
+        });
+        await new Promise((resolve) => tabulator.on("tableBuilt", resolve));
+        tabulator.setSort("last", "asc");
+        expect(displayedIds()).toEqual([4, 2, 5, 3, 1]);
+    });
+
+    afterEach(() => {
+        tabulator.destroy();
+        document.getElementById("tabulator")?.remove();
+    });
+
+    it("should add a row above the target row", async () => {
+        await tabulator.addRow({ id: 6 }, true, 5);
+        expect(displayedIds()).toEqual([4, 2, 6, 5, 3, 1]);
+    });
+
+    it("should add a row below the target row", async () => {
+        await tabulator.addRow({ id: 6 }, false, 5);
+        expect(displayedIds()).toEqual([4, 2, 5, 6, 3, 1]);
+    });
+
+    it("should add rows at the top and bottom of the table", async () => {
+        await tabulator.addRow({ id: 6 }, true);
+        await tabulator.addRow({ id: 7 }, false);
+        expect(displayedIds()).toEqual([6, 4, 2, 5, 3, 1, 7]);
+    });
+
+    it("should keep the sort order when a row is deleted", async () => {
+        await tabulator.deleteRow(5);
+        expect(displayedIds()).toEqual([4, 2, 3, 1]);
+    });
+});
