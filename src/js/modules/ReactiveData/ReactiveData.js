@@ -355,7 +355,8 @@ export default class ReactiveData extends Module{
 	rebuildTree(row){
 		this.table.modules.dataTree.initializeRow(row);
 		this.table.modules.dataTree.layoutRow(row);
-		this.table.rowManager.refreshActiveData("tree", false, true);
+		// Refresh the owning display stage: https://github.com/tabulator-tables/tabulator/issues/5007
+		this.table.modules.dataTree.refreshData(true);
 	}
 	
 	watchKey(row, data, key){
