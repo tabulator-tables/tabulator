@@ -74,7 +74,7 @@
     "@babel/preset-typescript": "^7.29.7",
     "@playwright/test": "^1.65.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
-    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-terser": "^1.0.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.19.2",
     "babel-jest": "^30.4.1",
