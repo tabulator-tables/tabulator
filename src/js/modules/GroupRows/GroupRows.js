@@ -338,7 +338,20 @@ export default class GroupRows extends Module{
 	rowDeleting(row){
 		//remove from group
 		if(this.table.options.groupBy && row.modules.group){
-			row.modules.group.removeRow(row);
+			var group = row.modules.group,
+			current = group;
+
+			// https://github.com/tabulator-tables/tabulator/issues/4977
+			while(current){
+				const groupKey = current.level + "_" + current.key;
+				if((current.parent || this).groups[groupKey] !== current){
+					return;
+				}
+
+				current = current.parent;
+			}
+
+			group.removeRow(row);
 		}
 	}
 	
