@@ -18,7 +18,7 @@ export default class SelectRange extends Module {
 		this.ranges = [];
 		this.overlay = null;
 		this.rowHeader = null;
-		this.layoutChangeTimeout = null;
+		this.layoutChangeFrame = null;
 		this.columnSelection = false;
 		this.rowSelection = false;
 		this.maxRanges = 0;
@@ -839,9 +839,16 @@ export default class SelectRange extends Module {
 	///////////////////////////////////
 	
 	layoutChange(){
-		this.overlay.style.visibility = "hidden";
-		clearTimeout(this.layoutChangeTimeout);
-		this.layoutChangeTimeout = setTimeout(this.layoutRanges.bind(this), 200);
+		// Keep the overlay visible and reposition it before the next paint
+		// https://github.com/tabulator-tables/tabulator/issues/5000
+		if(this.layoutChangeFrame){
+			return;
+		}
+
+		this.layoutChangeFrame = requestAnimationFrame(() => {
+			this.layoutChangeFrame = null;
+			this.layoutRanges();
+		});
 	}
 	
 	redraw(force) {
@@ -920,6 +927,10 @@ export default class SelectRange extends Module {
 
 		activeCellEl = activeCell.getElement();
 		activeRowEl = activeCell.row.getElement();
+
+		// A cell outside the virtual DOM has no position to outline
+		// https://github.com/tabulator-tables/tabulator/issues/5000
+		this.activeRangeCellElement.style.display = activeCellEl.isConnected ? "" : "none";
 
 		if(this.table.rtl){
 			this.activeRangeCellElement.style.right = activeRowEl.offsetWidth - activeCellEl.offsetLeft - activeCellEl.offsetWidth + "px";
@@ -1041,6 +1052,8 @@ export default class SelectRange extends Module {
 	}
 	
 	tableDestroyed(){
+		cancelAnimationFrame(this.layoutChangeFrame);
+		this.layoutChangeFrame = null;
 		document.removeEventListener("mouseup", this.mouseUpEvent);
 		this.fillHandle?.destroy();
 		this.table.rowManager.element.removeEventListener("keydown", this.keyDownEvent);
