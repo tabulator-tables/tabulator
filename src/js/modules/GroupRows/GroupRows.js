@@ -343,7 +343,8 @@ export default class GroupRows extends Module{
 
 			// https://github.com/tabulator-tables/tabulator/issues/4977
 			while(current){
-				if((current.parent || this).groups[current.level + "_" + current.key] !== current){
+				const groupKey = current.level + "_" + current.key,
+				if((current.parent || this).groups[groupKey] !== current){
 					return;
 				}
 
