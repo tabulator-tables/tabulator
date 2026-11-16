@@ -76,7 +76,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@types/jest": "^30.0.0",
-    "@types/node": "^22.13.5",
+    "@types/node": "^24.19.2",
     "babel-jest": "^30.4.1",
     "eslint": "^9.36.0",
     "eslint-plugin-only-warn": "^1.1.0",
