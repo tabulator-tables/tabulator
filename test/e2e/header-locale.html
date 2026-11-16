@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Localized header controls</title>
+    <link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+    <script src="../../dist/js/tabulator.js"></script>
+</head>
+<body>
+    <button id="outside">Outside the table</button>
+    <div id="table"></div>
+    <script>
+        window.table = new Tabulator("#table", {
+            data: [{ name: "Alice", age: 30 }],
+            columns: [
+                { title: "Name", field: "name", headerPopup: "Filter options" },
+                { title: "Age", field: "age", headerMenu: [{ label: "Menu action", action: function(){} }] }
+            ],
+            langs: { fr: { columns: { name: "Nom", age: "Age traduit" } } }
+        });
+    </script>
+</body>
+</html>

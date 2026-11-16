@@ -8,6 +8,7 @@ export default class Popup extends Module{
 		super(table);
 		
 		this.columnSubscribers = {};
+		this.headerElements = new WeakMap();
 		
 		this.registerTableOption("rowContextPopup", false);
 		this.registerTableOption("rowClickPopup", false);
@@ -37,6 +38,7 @@ export default class Popup extends Module{
 		this.initializeGroupWatchers();
 		
 		this.subscribe("column-init", this.initializeColumn.bind(this));
+		this.subscribe("column-title-rendered", this._renderHeaderElement.bind(this));
 	}
 
 	_componentPopupCall(component, contents, position){
@@ -143,7 +145,16 @@ export default class Popup extends Module{
 			this.loadPopupEvent(column.definition.headerPopup, e, column);
 		});
 		
-		column.titleElement.insertBefore(headerPopupEl, column.titleElement.firstChild);
+		this.headerElements.set(column, headerPopupEl);
+		this._renderHeaderElement(column, column.titleElement);
+	}
+
+	_renderHeaderElement(column, titleElement){
+		var element = this.headerElements.get(column);
+
+		if(element){
+			titleElement.insertBefore(element, titleElement.firstChild);
+		}
 	}
 	
 	loadPopupTableCellEvent(option, e, cell){
