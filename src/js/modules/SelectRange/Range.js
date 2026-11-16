@@ -1,8 +1,12 @@
 import CoreFeature from '../../core/CoreFeature.js';
 import RangeComponent from "./RangeComponent";
+import Rect from "../../core/tools/Rect.js";
 
 export default class Range extends CoreFeature{
-	constructor(table, rangeManager, start, end) {
+	/**
+	 * @param {{start?: Cell|Column, end?: Cell|Column, rect?: Rect, skipEvents?: boolean, classNames?: string[]}} options
+	 */
+	constructor(table, rangeManager, options) {
 		super(table);
 		
 		this.rangeManager = rangeManager;
@@ -13,38 +17,48 @@ export default class Range extends CoreFeature{
 			end:false,
 		};
 		this.destroyed = false;
+		this.skipEvents = options.skipEvents || false;
 		
-		this.top = 0;
-		this.bottom = 0;
-		this.left = 0;
-		this.right = 0;
+		this.rect = options.rect ? options.rect.clone() : Rect.zero();
 		
 		this.table = table;
+		this.modifiedCells = [];
 		this.start = {row:undefined, col:undefined};
 		this.end = {row:undefined, col:undefined};
 
-		if(this.rangeManager.rowHeader){
-			this.left = 1;
-			this.right = 1;
+		if (options.rect) {
+			this.start.row = options.rect.top;
+			this.start.col = options.rect.left;
+			this.end.row = options.rect.bottom;
+			this.end.col = options.rect.right;
+		} else if (this.rangeManager.rowHeader){
+			this.rect.left = 1;
+			this.rect.right = 1;
 			this.start.col = 1;
 			this.end.col = 1;
 		}
 		
-		this.initElement();
+		this.initElement(options.classNames);
 		
-		setTimeout(() => {
-			this.initBounds(start, end);
-		});
+		if (!options.rect) {
+			setTimeout(() => {
+				this.initBounds(options.start, options.end);
+			});
+		}
 	}
 	
-	initElement(){
+	initElement(classNames){
 		this.element = document.createElement("div");
 		this.element.classList.add("tabulator-range");
+		
+		if(classNames){
+			this.element.classList.add(...classNames);
+		}
 	}
 	
 	initBounds(start, end){
 		this._updateMinMax();
-		
+
 		if(start){
 			this.setBounds(start, end || start);
 		}
@@ -73,7 +87,21 @@ export default class Range extends CoreFeature{
 			this._updateMinMax();
 		}
 	}
-	
+
+	/**
+	 * @param {Rect} rect
+	 */
+	setRect(rect) {
+		const startRow = this.start.row === this.rect.top ? rect.top : rect.bottom;
+		const startCol = this.start.col === this.rect.left ? rect.left : rect.right;
+
+		this.setStart(startRow, startCol);
+		this.setEnd(
+			startRow === rect.top ? rect.bottom : rect.top,
+			startCol === rect.left ? rect.right : rect.left,
+		);
+	}
+
 	setBounds(start, end, visibleRows){
 		if(start){
 			this.setStartBound(start);
@@ -132,17 +160,23 @@ export default class Range extends CoreFeature{
 	}
 	
 	_updateMinMax() {
-		this.top = Math.min(this.start.row, this.end.row);
-		this.bottom = Math.max(this.start.row, this.end.row);
-		this.left = Math.min(this.start.col, this.end.col);
-		this.right = Math.max(this.start.col, this.end.col);
+		this.rect.top = Math.min(this.start.row, this.end.row);
+		this.rect.bottom = Math.max(this.start.row, this.end.row);
+		this.rect.left = Math.min(this.start.col, this.end.col);
+		this.rect.right = Math.max(this.start.col, this.end.col);
 		
 		if(this.initialized){
-			this.dispatchExternal("rangeChanged", this.getComponent());
+			if(!this.skipEvents){
+				this.dispatchExternal("rangeChanged", this.getComponent());
+			}
 		}else{
 			if(this.initializing.start && this.initializing.end){
 				this.initialized = true;
-				this.dispatchExternal("rangeAdded", this.getComponent());
+
+				if(!this.skipEvents){
+					this.dispatch("range-added", this);
+					this.dispatchExternal("rangeAdded", this.getComponent());
+				}
 			}
 		}
 	}
@@ -195,10 +229,10 @@ export default class Range extends CoreFeature{
 		}
 		
 		if (this.overlaps(_vDomLeft, _vDomTop, _vDomRight, _vDomBottom)) {
-			top = Math.max(this.top, _vDomTop);
-			bottom = Math.min(this.bottom, _vDomBottom);
-			left = Math.max(this.left, _vDomLeft);
-			right = Math.min(this.right, _vDomRight + frozenLeft + frozenRight);
+			top = Math.max(this.rect.top, _vDomTop);
+			bottom = Math.min(this.rect.bottom, _vDomBottom);
+			left = Math.max(this.rect.left, _vDomLeft);
+			right = Math.min(this.rect.right, _vDomRight + frozenLeft + frozenRight);
 			
 			topLeftCell = this.rangeManager.getCell(top, left);
 			bottomRightCell = this.rangeManager.getCell(bottom, right);
@@ -239,11 +273,11 @@ export default class Range extends CoreFeature{
 	}
 	
 	atTopLeft(cell) {
-		return cell.row.position - 1 === this.top && cell.column.getPosition() - 1 === this.left;
+		return cell.row.position - 1 === this.rect.top && cell.column.getPosition() - 1 === this.rect.left;
 	}
 	
 	atBottomRight(cell) {
-		return cell.row.position - 1 === this.bottom && cell.column.getPosition() - 1 === this.right;
+		return cell.row.position - 1 === this.rect.bottom && cell.column.getPosition() - 1 === this.rect.right;
 	}
 	
 	occupies(cell) {
@@ -251,15 +285,15 @@ export default class Range extends CoreFeature{
 	}
 	
 	occupiesRow(row) {
-		return this.top <= row.position - 1 && row.position - 1 <= this.bottom;
+		return this.rect.top <= row.position - 1 && row.position - 1 <= this.rect.bottom;
 	}
 	
 	occupiesColumn(col) {
-		return this.left <= col.getPosition() - 1 && col.getPosition() - 1 <= this.right;
+		return this.rect.left <= col.getPosition() - 1 && col.getPosition() - 1 <= this.rect.right;
 	}
 	
 	overlaps(left, top, right, bottom) {
-		if ((this.left > right || left > this.right) || (this.top > bottom || top > this.bottom)){
+		if ((this.rect.left > right || left > this.rect.right) || (this.rect.top > bottom || top > this.rect.bottom)){
 			return false;
 		}
 		
@@ -320,11 +354,11 @@ export default class Range extends CoreFeature{
 	}
 	
 	getRows() {
-		return this._getTableRows().slice(this.top, this.bottom + 1);
+		return this._getTableRows().slice(this.rect.top, this.rect.bottom + 1);
 	}
 	
 	getColumns() {
-		return this._getTableColumns().slice(this.left, this.right + 1);
+		return this._getTableColumns().slice(this.rect.left, this.rect.right + 1);
 	}
 	
 	clearValues(){
@@ -341,6 +375,68 @@ export default class Range extends CoreFeature{
 		
 	}
 	
+	setData(data){
+		const rows = this.getCells(true);
+		const rowUpdates = new Map();
+		const cellValues = [];
+		let hasChanges = false;
+		
+		this.modifiedCells = [];
+		this.table.blockRedraw();
+		
+		rows.forEach((cells, rowIndex) => {
+			const rowValues = data[rowIndex];
+
+			cells.forEach((cell, colIndex) => {
+				const field = cell.column.getField();
+				const oldValue = cell.getValue();
+				const editable = !this.table.modExists("edit")
+					|| this.table.modules.edit.allowEdit(cell);
+				let newValue = oldValue;
+
+				if(editable && field && colIndex < rowValues.length){
+					newValue = rowValues[colIndex];
+					
+					// Same check updateData uses, so unchanged cells aren't reported
+					if(oldValue !== newValue){
+						hasChanges = true;
+						this.modifiedCells.push(cell.getComponent());
+					}
+					
+					if(!rowUpdates.has(cell.row)){
+						rowUpdates.set(cell.row, {});
+					}
+					
+					rowUpdates.get(cell.row)[field] = newValue;
+				}
+				
+				// Undo matches cellValues to getCells() by index, so it must
+				// cover every cell of the range, not just the changed ones.
+				cellValues.push({ oldValue, newValue });
+			});
+		});
+		
+		rowUpdates.forEach((newData, row) => row.updateData(newData));
+		
+		if(hasChanges && this.table.modExists("history")){
+			this.table.modules.history.action("rangeEdit", this, {
+				cells: cellValues,
+			});
+		}
+		
+		if(hasChanges){
+			this.dispatchExternal("rangeEdited", this.getComponent());
+		}
+		
+		this.table.restoreRedraw();
+	}
+
+	fill(value){
+		const columns = this.getColumns();
+		const data = this.getRows().map(() => columns.map(() => value));
+		this.setData(data);
+	}
+
 	getBounds(component){
 		var cells = this.getCells(false, component),
 		output = {
@@ -356,6 +452,14 @@ export default class Range extends CoreFeature{
 		}
 		
 		return output;
+	}
+	
+	getStartCell(){
+		return this.rangeManager.getCell(this.start.row, this.start.col);
+	}
+	
+	getEndCell(){
+		return this.rangeManager.getCell(this.end.row, this.end.col);
 	}
 	
 	getComponent() {
@@ -374,7 +478,7 @@ export default class Range extends CoreFeature{
 			this.rangeManager.rangeRemoved(this);
 		}
 		
-		if(this.initialized){
+		if(this.initialized && !this.skipEvents){
 			this.dispatchExternal("rangeRemoved", this.getComponent());
 		}
 	}

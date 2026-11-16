@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Tabulator Test</title>
+		<link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+		<script src="../../dist/js/tabulator.js"></script>
+		<style>
+		body {
+			padding: 20px;
+			font-family: Arial, sans-serif;
+		}
+		#test-table {
+			width: 100%;
+			height: 400px;
+			margin-bottom: 20px;
+		}
+		</style>
+	</head>
+	<body>
+		<h1>Tabulator Test</h1>
+		<div id="test-table"></div>
+
+		<script>
+		const testData = [
+			{ id: 1, name: "Alice", locked: "a" },
+			{ id: 2, name: "Bob", locked: "b" },
+			{ id: 3, name: "Charlie", locked: "c" },
+			{ id: 4, name: "Diana", locked: "d" },
+		];
+
+		const columns = [
+			{ title: "ID", field: "id" },
+			{ title: "Name", field: "name", editor: "input" },
+			{ title: "Locked", field: "locked" },
+		];
+
+		window.rangeEditedCount = 0;
+
+		window.testTable = new Tabulator("#test-table", {
+			data: testData,
+			columns: columns,
+			layout: "fitColumns",
+			selectableRange: true,
+			selectableRangeFill: true,
+			history: true,
+		});
+
+		window.testTable.on("rangeEdited", () => {
+			window.rangeEditedCount++;
+		});
+		</script>
+	</body>
+</html>

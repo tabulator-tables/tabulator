@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Bootstrap 5 cell editor borders</title>
+	<link rel="stylesheet" href="../../dist/css/tabulator_bootstrap5.css" />
+	<script src="../../dist/js/tabulator.js"></script>
+</head>
+<body>
+	<div id="example-table"></div>
+	<script>
+		window.testTable = new Tabulator("#example-table", {
+			data: [
+				{ name: "Alice", remarks: "Excellent performance" },
+				{ name: "Bob", remarks: "Needs improvement" },
+			],
+			layout: "fitData",
+			columns: [
+				{ title: "Name", field: "name", editor: "input" },
+				{ title: "Remarks", field: "remarks", editor: "input", validator: "required" },
+			],
+		});
+	</script>
+</body>
+</html>

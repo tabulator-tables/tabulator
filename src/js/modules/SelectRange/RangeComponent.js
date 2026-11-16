@@ -25,6 +25,10 @@ export default class RangeComponent {
 		return this._range.getCells(true, true);
 	}
 
+	getModifiedCells() {
+		return this._range.modifiedCells;
+	}
+
 	getStructuredCells() {
 		return this._range.getStructuredCells();
 	}
@@ -42,19 +46,19 @@ export default class RangeComponent {
 	}
 
 	getTopEdge() {
-		return this._range.top;
+		return this._range.rect.top;
 	}
 
 	getBottomEdge() {
-		return this._range.bottom;
+		return this._range.rect.bottom;
 	}
 
 	getLeftEdge() {
-		return this._range.left;
+		return this._range.rect.left;
 	}
 
 	getRightEdge() {
-		return this._range.right;
+		return this._range.rect.right;
 	}
 
 	setBounds(start, end){
@@ -80,6 +84,18 @@ export default class RangeComponent {
 	clearValues(){
 		if(this._range.destroyedGuard("clearValues")){
 			this._range.clearValues();
+		}
+	}
+
+	setData(data){
+		if(this._range.destroyedGuard("setData")){
+			this._range.setData(data);
+		}
+	}
+
+	fill(value){
+		if(this._range.destroyedGuard("fill")){
+			this._range.fill(value);
 		}
 	}
 

@@ -42,10 +42,10 @@ describe("SelectRange module", () => {
 
     it("should have one range initially at the top left", () => {
         const range = selectRangeMod.getRanges()[0]._range;
-        expect(range.top).toBe(0);
-        expect(range.left).toBe(0);
-        expect(range.bottom).toBe(0);
-        expect(range.right).toBe(0);
+        expect(range.rect.top).toBe(0);
+        expect(range.rect.left).toBe(0);
+        expect(range.rect.bottom).toBe(0);
+        expect(range.rect.right).toBe(0);
     });
 
     it("should add a new range when addRange is called", () => {
@@ -86,10 +86,10 @@ describe("SelectRange module", () => {
         range.setStart(1, 2);
         range.setEnd(3, 4);
         
-        expect(range.top).toBe(1);
-        expect(range.bottom).toBe(3);
-        expect(range.left).toBe(2);
-        expect(range.right).toBe(4);
+        expect(range.rect.top).toBe(1);
+        expect(range.rect.bottom).toBe(3);
+        expect(range.rect.left).toBe(2);
+        expect(range.rect.right).toBe(4);
     });
 
     it("should handle Range setStart and setEnd", () => {
@@ -116,10 +116,10 @@ describe("SelectRange module", () => {
         const range = selectRangeMod.getRanges()[0]._range;
         
         // Setup range bounds
-        range.top = 1;
-        range.bottom = 3;
-        range.left = 2;
-        range.right = 4;
+        range.rect.top = 1;
+        range.rect.bottom = 3;
+        range.rect.left = 2;
+        range.rect.right = 4;
         
         // Test overlapping case
         expect(range.overlaps(1, 1, 5, 5)).toBe(true);

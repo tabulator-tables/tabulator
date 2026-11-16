@@ -512,15 +512,8 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 				box-sizing: border-box;
 				border: 1px solid $rangeBorderColor;
 				
-				&.tabulator-range-active::after {
-					content: '';
-					position: absolute;
-					right: -3px;
-					bottom: -3px;
-					width: 6px;
-					height: 6px;
-					background-color: $rangeHandleColor;
-					border-radius: 999px;
+				&.tabulator-range-fill-preview {
+					border-style: dashed;
 				}
 			}
 			
@@ -1208,6 +1201,18 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 	
 }
 
+.tabulator-range-fill-handle {
+	position: absolute;
+	right: -3px;
+	bottom: -3px;
+	width: 6px;
+	height: 6px;
+	background-color: $rangeHandleColor;
+	border-radius: 999px;
+	cursor: crosshair;
+	pointer-events: auto;
+}
+
 .tabulator-toggle{
 	box-sizing: border-box;
 
@@ -1428,22 +1433,9 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 		}
 	}
 	
-	.tabulator-tableholder{
-		.tabulator-range-overlay {
-			.tabulator-range {
-				&.tabulator-range-active::after {
-					content: '';
-					position: absolute;
-					left: -3px;
-					right:initial;
-					bottom: -3px;
-					width: 6px;
-					height: 6px;
-					background-color: $rangeHandleColor;
-					border-radius: 999px;
-				}
-			}
-		}
+	.tabulator-range-fill-handle {
+		left: -3px;
+		right: initial;
 	}
 	
 	.tabulator-row{

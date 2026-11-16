@@ -4,6 +4,8 @@ import pasteActions from './clipboard/pasteActions.js';
 import pasteParsers from './clipboard/pasteParsers.js';
 import columnLookups from './export/columnLookups.js';
 import rowLookups from './export/rowLookups.js';
+import undoers from './history/undoers.js';
+import redoers from './history/redoers.js';
 
 export default {
 	keybindings:{
@@ -17,5 +19,9 @@ export default {
 	export:{
 		columnLookups:columnLookups,
 		rowLookups:rowLookups,
+	},
+	history:{
+		undoers:undoers,
+		redoers:redoers,
 	}
 };

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tabulator Example — 11 Popup Positioning</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="../dist/css/tabulator_bootstrap5.css" />
+  <script src="../dist/js/tabulator.js"></script>
+  <style>
+    /* This example needs a page that is genuinely larger than the viewport on
+       both axes, so that scrollLeft/scrollTop take part in the placement
+       calculation. That is why it breaks out of the usual .container width. */
+    #wide-area {
+      width: 2400px;
+      padding: 0 0 0 12px;
+    }
+
+    #example-table {
+      width: 2380px;
+    }
+
+    #scroll-box {
+      /* A custom popupContainer must establish a containing block. Popups are
+         position:absolute and their coordinates are computed relative to the
+         container, so without this they resolve against the page and land
+         nowhere near the box. */
+      position: relative;
+      width: 420px;
+      height: 220px;
+      overflow: auto;
+      border: 2px solid #0d6efd;
+    }
+
+    #scroll-box-inner {
+      height: 820px;
+      padding: 8px;
+    }
+
+    #toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #fff;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .demo-popup {
+      box-sizing: border-box;
+      padding: 8px 12px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <main class="py-4">
+    <div class="container">
+      <h1>11 · Popup Positioning</h1>
+      <p>
+        A popup opened near an edge has to be moved back on screen. This page lets you
+        drive that: pick a popup size, scroll the page so the target sits against a
+        viewport edge, then right-click a cell. The readout shows where the popup
+        actually landed and whether any of it fell outside the viewport.
+        <a href="index.html">← back to index</a>
+      </p>
+
+      <ul>
+        <li><strong>Reversal</strong> — a popup that would overflow the right edge flips to the other side of its anchor.</li>
+        <li><strong>Clamping</strong> — if it is wider or taller than the space it flipped into, it is pulled back to the edge.</li>
+        <li><strong>Scrolling</strong> — bounds are the visible viewport, so they move with the page scroll.</li>
+        <li><strong>Containers</strong> — a popup hosted in a scrollable element is bounded by that element instead.</li>
+      </ul>
+
+      <p class="text-secondary small">
+        A popup is positioned once, in page coordinates, and then moves with the page.
+      </p>
+    </div>
+
+    <div id="toolbar" class="py-2 mb-3">
+      <div class="container d-flex flex-wrap gap-3 align-items-center">
+        <label class="d-flex gap-2 align-items-center mb-0">
+          <span class="text-secondary">Popup size</span>
+          <select id="popup-size" class="form-select form-select-sm w-auto">
+            <option value="small">small — 180 × 120</option>
+            <option value="wide">wide — 900 × 120</option>
+            <option value="tall">tall — 240 × 1500</option>
+          </select>
+        </label>
+
+        <label class="d-flex gap-2 align-items-center mb-0">
+          <span class="text-secondary">Container</span>
+          <select id="popup-container" class="form-select form-select-sm w-auto">
+            <option value="body">document.body</option>
+            <option value="table">table element</option>
+          </select>
+        </label>
+
+        <button id="go-corner" class="btn btn-sm btn-primary">Scroll to bottom-right</button>
+        <button id="go-origin" class="btn btn-sm btn-secondary">Scroll to top-left</button>
+
+        <span id="readout" class="font-monospace small text-secondary"></span>
+      </div>
+    </div>
+
+    <div id="wide-area">
+      <p class="mb-2">
+        <strong>Nested table in a scrollable container.</strong> Its popups use that
+        blue box as their container, so they are bounded by it rather than by the window.
+      </p>
+
+      <div id="scroll-box" class="mb-4">
+        <div id="scroll-box-inner">
+          <div id="nested-table"></div>
+        </div>
+      </div>
+
+      <p class="mb-2">
+        <strong>Main table.</strong> Right-click any cell, or click the
+        <code>⋮</code> icon on the <em>Name</em> header.
+      </p>
+
+      <div id="example-table"></div>
+    </div>
+  </main>
+
+  <script>
+    // Each popup is a fixed-size block, so the placement maths is easy to follow.
+    // "tall" is deliberately taller than any normal viewport, which is what makes
+    // Tabulator cap its height rather than let it run off the bottom.
+    var SIZES = {
+      small: { width: 180, height: 120, lines: 6 },
+      wide:  { width: 900, height: 120, lines: 6 },
+      tall:  { width: 240, height: 1500, lines: 60 },
+    };
+
+    var sizeSelect = document.getElementById("popup-size");
+    var containerSelect = document.getElementById("popup-container");
+    var readout = document.getElementById("readout");
+
+    // Popup contents can be a function, so the size is read at open time and the
+    // dropdown takes effect without rebuilding the table.
+    function popupContents() {
+      var size = SIZES[sizeSelect.value];
+      var el = document.createElement("div");
+
+      el.className = "demo-popup";
+      el.style.width = size.width + "px";
+      el.style.height = size.height + "px";
+
+      for (var i = 1; i <= size.lines; i++) {
+        var line = document.createElement("div");
+        line.textContent = "Popup line " + i;
+        el.appendChild(line);
+      }
+
+      return el;
+    }
+
+    var tabledata = [];
+    for (var i = 1; i <= 60; i++) {
+      var row = { id: i, name: "Person " + i, dept: i % 2 ? "Engineering" : "Sales", age: 20 + (i % 40) };
+      // Filler columns, so the table is wider than any viewport and there are
+      // always cells hard against the left and right edges.
+      for (var n = 1; n <= 6; n++) {
+        row["note" + n] = "note " + n + "-" + i;
+      }
+      tabledata.push(row);
+    }
+
+    function columns() {
+      var cols = [
+        { title: "ID", field: "id", sorter: "number", contextPopup: popupContents },
+        // headerPopup adds a clickable icon in the header; the popup is anchored to
+        // that icon rather than to the mouse.
+        { title: "Name", field: "name", sorter: "string", contextPopup: popupContents,
+          headerPopup: popupContents, headerPopupIcon: "&vellip;" },
+        { title: "Department", field: "dept", sorter: "string", contextPopup: popupContents },
+        { title: "Age", field: "age", sorter: "number", hozAlign: "right", contextPopup: popupContents },
+      ];
+
+      for (var n = 1; n <= 6; n++) {
+        cols.push({ title: "Note " + n, field: "note" + n, contextPopup: popupContents });
+      }
+
+      return cols;
+    }
+
+    var table, nested;
+
+    function build() {
+      if (table) { table.destroy(); }
+      if (nested) { nested.destroy(); }
+
+      // popupContainer: true hosts popups inside the table element; false (the
+      // default) hosts them on document.body.
+      table = new Tabulator("#example-table", {
+        data: tabledata,
+        columns: columns(),
+        layout: "fitColumns",
+        height: "1300px",
+        popupContainer: containerSelect.value === "table",
+        rowContextPopup: popupContents,
+      });
+
+      // This one always uses the scrollable div, to contrast with the main table.
+      nested = new Tabulator("#nested-table", {
+        data: tabledata.slice(0, 20),
+        columns: columns(),
+        layout: "fitColumns",
+        height: "260px",
+        popupContainer: "#scroll-box",
+        rowContextPopup: popupContents,
+      });
+    }
+
+    // Only the container choice needs a rebuild - popupContents() reads the size
+    // at open time, so the size dropdown takes effect on the next popup.
+    containerSelect.addEventListener("change", build);
+
+    document.getElementById("go-corner").addEventListener("click", function () {
+      window.scrollTo(document.body.scrollWidth, document.body.scrollHeight);
+    });
+
+    document.getElementById("go-origin").addEventListener("click", function () {
+      window.scrollTo(0, 0);
+    });
+
+    // Live readout of the scroll position, the viewport, and where the open popup
+    // ended up. "OFF SCREEN" means the placement failed to keep it in view.
+    function updateReadout() {
+      var popup = document.querySelector(".tabulator-popup-container");
+      var parts = [
+        "scroll " + Math.round(window.scrollX) + "," + Math.round(window.scrollY),
+        "viewport " + document.documentElement.clientWidth + "×" + document.documentElement.clientHeight,
+      ];
+
+      if (popup) {
+        var box = popup.getBoundingClientRect();
+        var onScreen = box.left >= -0.5 && box.top >= -0.5 &&
+          box.right <= document.documentElement.clientWidth + 0.5 &&
+          box.bottom <= document.documentElement.clientHeight + 0.5;
+
+        parts.push(
+          "popup " + Math.round(box.left) + "," + Math.round(box.top) +
+            " → " + Math.round(box.right) + "," + Math.round(box.bottom),
+          onScreen ? "ON SCREEN" : "OFF SCREEN"
+        );
+      }
+
+      readout.textContent = parts.join("  |  ");
+    }
+
+    window.addEventListener("scroll", updateReadout);
+    setInterval(updateReadout, 200);
+
+    build();
+    updateReadout();
+  </script>
+</body>
+</html>

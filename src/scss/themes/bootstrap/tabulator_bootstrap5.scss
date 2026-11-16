@@ -760,11 +760,8 @@ $table-cell-padding-sm: 5px !default; // cell padding in table-sm
 
 	.tabulator-cell{
 		padding:$cellPadding;
+		// https://github.com/tabulator-tables/tabulator/issues/4728
 		border-right:none;
-
-		&:last-of-type{
-			border-right: none;
-		}
 
 		&.tabulator-row-header{
 			border-right:1px solid $borderColor;

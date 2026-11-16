@@ -28,7 +28,7 @@ export default function(cell, onRendered, success, cancel, editorParams){
 		}
 	}
 
-	input.value = value;
+	input.value = editorParams.initialValue ?? value;
 
 	onRendered(function(){
 		if(cell.getType() === "cell"){
@@ -49,7 +49,7 @@ export default function(cell, onRendered, success, cancel, editorParams){
 
 		if(((cellValue === null || typeof cellValue === "undefined") && input.value !== "") || input.value !== cellValue){
 
-			if(success(input.value)){
+			if(success(input.value, e)){
 				cellValue = input.value; //persist value if successfully validated incase editor is used as header filter
 			}
 
@@ -57,7 +57,7 @@ export default function(cell, onRendered, success, cancel, editorParams){
 				cell.getRow().normalizeHeight();
 			},300);
 		}else{
-			cancel();
+			cancel(e);
 		}
 	}
 
@@ -86,11 +86,22 @@ export default function(cell, onRendered, success, cancel, editorParams){
 			case "Enter":
 				if(e.shiftKey && editorParams.shiftEnterSubmit){
 					onChange(e);
+				} else if(
+					(e.shiftKey && editorParams.shiftEnterNewLine)
+					|| (e.altKey && editorParams.altEnterNewLine)
+					|| (e.ctrlKey && editorParams.ctrlEnterNewLine)
+					|| (e.metaKey && editorParams.metaEnterNewLine)
+				) {
+					e.preventDefault();
+					input.setRangeText("\n", input.selectionStart, input.selectionEnd, "end");
+				} else if (editorParams.enterSubmit){
+					e.preventDefault();
+					onChange(e);
 				}
 				break;
 
 			case "Escape":
-				cancel();
+				cancel(e);
 				break;
 
 			case "ArrowUp":
