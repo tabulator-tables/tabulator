@@ -33,6 +33,7 @@ $rowSelectedBackgroundHover: #769BCC !default;//row background color when select
 
 $editBoxColor:#1D68CD !default; //border color for edit boxes
 $errorColor:#dd0000 !default; //error indication
+$cellPlaceholderColor: #999 !default; //cell placeholder text color
 
 //footer theming
 $footerBackgroundColor:#e6e6e6 !default; //border to tabulator
@@ -946,6 +947,11 @@ $rangeHeaderTextHighlightBackground: #000000 !default; //header text color when 
 				
 				color: $errorColor;
 			}
+		}
+
+		&.tabulator-cell-placeholder{
+			color: $cellPlaceholderColor;
+			font-style: italic;
 		}
 		
 		//movable row handle

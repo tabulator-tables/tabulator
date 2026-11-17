@@ -29,6 +29,7 @@ $rowSelectedBackgroundHover: #769BCC !default;//row background color when select
 
 $editBoxColor:#1D68CD !default; //border color for edit boxes
 $errorColor:#dd0000 !default; //error indication
+$cellPlaceholderColor: $input-placeholder-color !default;
 
 //footer theming
 $footerBorderColor:$pagination-border-color !default; //footer border color
@@ -53,6 +54,7 @@ $table-cell-padding-sm: 5px;
 	$rowSelectedBackgroundHover: $rowSelectedBackgroundHover,
 	$editBoxColor: $editBoxColor,
 	$errorColor: $errorColor,
+	$cellPlaceholderColor: $cellPlaceholderColor,
 	$footerBorderColor: $footerBorderColor,
 	$footerSeparatorColor: $footerSeparatorColor,
 	$footerActiveColor: $footerActiveColor
