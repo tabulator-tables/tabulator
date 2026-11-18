@@ -27,6 +27,7 @@ export default class ColumnManager extends CoreFeature {
 		
 		this.redrawBlock = false; //prevent redraws to allow multiple data manipulations before continuing
 		this.redrawBlockUpdate = null; //store latest redraw update only status
+		this.redrawBlockPending = false; //track if a rerender was requested while blocked
 		
 		this.renderer = null;
 	}
@@ -749,6 +750,8 @@ export default class ColumnManager extends CoreFeature {
 		if(!this.redrawBlock){
 			this.renderer.rerenderColumns(update, silent);
 		}else{
+			this.redrawBlockPending = true;
+			
 			if(update === false || (update === true && this.redrawBlockUpdate === null)){
 				this.redrawBlockUpdate = update;
 			}
@@ -758,12 +761,17 @@ export default class ColumnManager extends CoreFeature {
 	blockRedraw(){
 		this.redrawBlock = true;
 		this.redrawBlockUpdate = null;
+		this.redrawBlockPending = false;
 	}
 	
 	restoreRedraw(){
 		this.redrawBlock = false;
 		this.verticalAlignHeaders();
-		this.renderer.rerenderColumns(this.redrawBlockUpdate);
+		
+		if(this.redrawBlockPending){
+			this.redrawBlockPending = false;
+			this.renderer.rerenderColumns(this.redrawBlockUpdate);
+		}
 		
 	}
 	
