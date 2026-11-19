@@ -75,7 +75,7 @@ export default {
 
 		if(values.length){
 			values.forEach(function(value){
-				if(value){
+				if(value !== null && typeof value !== "undefined" && value !== ""){
 					output ++;
 				}
 			});
