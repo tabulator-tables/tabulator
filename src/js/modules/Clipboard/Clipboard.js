@@ -137,6 +137,10 @@ export default class Clipboard extends Module{
 					}
 				}
 
+				if(typeof value === "string" && /[\t\r\n"]/.test(value)){
+					value = '"' + value.replace(/"/g, '""') + '"';
+				}
+
 				rowData.push(value);
 			});
 
