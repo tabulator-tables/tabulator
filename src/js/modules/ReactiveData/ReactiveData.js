@@ -84,8 +84,10 @@ export default class ReactiveData extends Module{
 				
 				if(!self.blocked && version === self.currentVersion){
 					self.block("data-unshift");
-					
-					args.forEach((arg) => {
+
+					//each row goes to the top, so add them last to first to keep their order
+					//https://github.com/tabulator-tables/tabulator/issues/5005
+					args.slice().reverse().forEach((arg) => {
 						self.table.rowManager.addRowActual(arg, true);
 					});
 					
@@ -180,6 +182,12 @@ export default class ReactiveData extends Module{
 						if(startRow){
 							newRows.forEach((rowData) => {
 								self.table.rowManager.addRowActual(rowData, true, startRow, true);
+							});
+						}else if(start >= data.length){
+							//splicing in at the end appends the rows to the bottom
+							//https://github.com/tabulator-tables/tabulator/issues/5005
+							newRows.forEach((rowData) => {
+								self.table.rowManager.addRowActual(rowData, false, false, true);
 							});
 						}else{
 							newRows = newRows.slice().reverse();
