@@ -41,3 +41,45 @@ describe("ColumnManager - calculateSorterFromValue with BigInt values", () => {
         expect(column.definition.sorter).toBe("number");
     });
 });
+
+describe("ColumnManager - restoreRedraw", () => {
+    /** @type {TabulatorFull} */
+    let tabulator;
+
+    afterEach(() => {
+        tabulator?.destroy();
+        document.getElementById("tabulator")?.remove();
+    });
+
+    async function buildColumnManager() {
+        const el = document.createElement("div");
+        el.id = "tabulator";
+        document.body.appendChild(el);
+        tabulator = new TabulatorFull("#tabulator", { data: [{ id: 1 }], columns: [{ field: "id" }] });
+        await new Promise((resolve) => tabulator.on("tableBuilt", resolve));
+        const columnManager = tabulator.columnManager;
+        jest.spyOn(columnManager.renderer, "rerenderColumns");
+        return columnManager;
+    }
+
+    it("does not rerender columns if no rerender was requested while blocked", async () => {
+        const columnManager = await buildColumnManager();
+
+        columnManager.blockRedraw();
+        columnManager.restoreRedraw();
+
+        expect(columnManager.renderer.rerenderColumns).not.toHaveBeenCalled();
+    });
+
+    it("runs a rerender that was requested while blocked", async () => {
+        const columnManager = await buildColumnManager();
+
+        columnManager.blockRedraw();
+        columnManager.rerenderColumns(true);
+        expect(columnManager.renderer.rerenderColumns).not.toHaveBeenCalled();
+        columnManager.restoreRedraw();
+
+        expect(columnManager.renderer.rerenderColumns).toHaveBeenCalledTimes(1);
+        expect(columnManager.renderer.rerenderColumns).toHaveBeenCalledWith(true);
+    });
+});
