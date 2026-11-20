@@ -17,7 +17,8 @@ describe("ReactiveData module", () => {
         // Create mock dataTree module
         const mockDataTree = {
             initializeRow: jest.fn(),
-            layoutRow: jest.fn()
+            layoutRow: jest.fn(),
+            refreshData: jest.fn()
         };
         
         // Create mock eventBus
@@ -301,7 +302,8 @@ describe("ReactiveData module", () => {
         // Verify dataTree methods were called
         expect(mockTable.modules.dataTree.initializeRow).toHaveBeenCalledWith(mockRow);
         expect(mockTable.modules.dataTree.layoutRow).toHaveBeenCalledWith(mockRow);
-        expect(mockTable.rowManager.refreshActiveData).toHaveBeenCalledWith("tree", false, true);
+        // https://github.com/tabulator-tables/tabulator/issues/5007
+        expect(mockTable.modules.dataTree.refreshData).toHaveBeenCalledWith(true);
     });
     
     it("should watch data array and override array methods", () => {
