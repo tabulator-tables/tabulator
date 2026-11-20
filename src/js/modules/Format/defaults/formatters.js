@@ -20,6 +20,7 @@ import handle from './formatters/handle.js';
 import adaptable from './formatters/adaptable.js';
 import array from './formatters/array.js';
 import json from './formatters/json.js';
+import placeholder from './formatters/placeholder.js';
 
 export default {
 	plaintext:plaintext,
@@ -44,4 +45,5 @@ export default {
 	adaptable:adaptable,
 	array:array,
 	json:json,
+	placeholder:placeholder,
 };
