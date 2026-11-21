@@ -322,4 +322,19 @@ describe("Keybindings module", () => {
             expect(keybindingsMod.dispatch).toHaveBeenCalledWith(`keybinding-${action.replace("nav", "nav-").toLowerCase()}`, events[action]);
         });
     });
+
+    it("should fall back to keyCode when the event has no key property", () => {
+        expect(keybindingsMod.getKeyCode({})).toBe(0);
+        expect(keybindingsMod.getKeyCode({ keyCode: 13 })).toBe(13);
+    });
+
+    it("should not throw on key events without a key property", () => {
+        const mod = new Keybindings({...mockTable, options: {keybindings: {}}});
+        const event = new Event("keydown");
+
+        mod.initialize();
+
+        expect(() => mod.keydownBinding(event)).not.toThrow();
+        expect(() => mod.keyupBinding(event)).not.toThrow();
+    });
 });
