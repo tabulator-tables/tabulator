@@ -994,6 +994,8 @@ export default class Edit{
 		this.currentItems = [];
 		
 		this.focusedItem = null;
+		
+		this._liveFilterUpdate();
 	}
 	
 	_chooseItem(item, silent, e){
@@ -1016,6 +1018,10 @@ export default class Edit{
 			
 			this._styleItem(item);
 			
+			if(!silent){
+				this._liveFilterUpdate(e);
+			}
+			
 		}else{
 			if(this.isFilter && !silent && item.selected){
 				this._clearChoices();
@@ -1036,6 +1042,27 @@ export default class Edit{
 		}
 		
 		this._focusItem(item);
+	}
+	
+	//update a multiselect header filter as soon as a choice changes when live filtering is enabled
+	//https://github.com/tabulator-tables/tabulator/issues/4868
+	_liveFilterUpdate(e){
+		var output;
+		
+		if(this.isFilter && this.params.multiselect && this._liveFilterEnabled()){
+			output = this.currentItems.length ? this.currentItems.map(item => item.value) : this.params.emptyValue;
+			
+			this.actions.success(output, e);
+		}
+	}
+	
+	_liveFilterEnabled(){
+		var column = this.cell.getColumn ? this.cell.getColumn() : false,
+		definition;
+		
+		definition = column && column.getDefinition ? column.getDefinition() : false;
+		
+		return definition ? definition.headerFilterLiveFilter !== false : true;
 	}
 	
 	_resolveValue(blur, e){
@@ -1073,7 +1100,7 @@ export default class Edit{
 			}
 		}
 		
-		if(output === ""){
+		if(output === "" || (this.isFilter && Array.isArray(output) && !output.length)){
 			output = this.params.emptyValue;
 		}
 		
