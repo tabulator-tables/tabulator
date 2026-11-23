@@ -1018,7 +1018,9 @@ export default class Edit{
 			
 			this._styleItem(item);
 			
-			this._liveFilterUpdate(e);
+			if(!silent){
+				this._liveFilterUpdate(e);
+			}
 			
 		}else{
 			if(this.isFilter && !silent && item.selected){
@@ -1098,7 +1100,7 @@ export default class Edit{
 			}
 		}
 		
-		if(output === ""){
+		if(output === "" || (this.isFilter && Array.isArray(output) && !output.length)){
 			output = this.params.emptyValue;
 		}
 		

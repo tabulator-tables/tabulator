@@ -126,4 +126,75 @@ describe("Header filter - list editor with multiselect", () => {
 
 		expect(table.getData("active").map(row => row.id)).toEqual([1, 2, 3]);
 	});
+
+	it("sends one remote request when setting an array of initial values", async () => {
+		const requests = [];
+
+		document.body.innerHTML = '<div id="test-table"></div>';
+
+		table = new TabulatorFull("#test-table", {
+			filterMode: "remote",
+			ajaxURL: "http://example.com/data",
+			ajaxRequestFunc: (url, config, params) => {
+				requests.push(params.filter);
+
+				return Promise.resolve([
+					{ id: 1, name: "John", location: "London" },
+					{ id: 2, name: "Jane", location: "Paris" },
+					{ id: 3, name: "Bob", location: "London" },
+				]);
+			},
+			columns: [
+				{ title: "ID", field: "id" },
+				{ title: "Name", field: "name" },
+				{
+					title: "Location",
+					field: "location",
+					headerFilter: "list",
+					headerFilterFunc: "in",
+					headerFilterParams: { values: ["London", "Paris", "Oslo"], multiselect: true },
+				},
+			],
+		});
+
+		await new Promise(resolve => table.on("tableBuilt", resolve));
+		await new Promise(resolve => setTimeout(resolve, 0));
+
+		//ignore the request made while building the table
+		requests.length = 0;
+
+		table.setHeaderFilterValue("location", ["Oslo", "London"]);
+
+		await new Promise(resolve => setTimeout(resolve, 0));
+
+		expect(requests).toEqual([[{ field: "location", type: "in", value: ["Oslo", "London"] }]]);
+	});
+
+	it("keeps the header filter removed when the list is closed with no selections", async () => {
+		await setupTable({ headerFilterFunc: (value, rowValue) => value.includes(rowValue) });
+
+		const items = await openHeaderFilterList();
+
+		//the popup binds its blur handlers 100ms after it is shown
+		await new Promise(resolve => setTimeout(resolve, 150));
+
+		clickItem(items, "London");
+
+		await new Promise(resolve => setTimeout(resolve, 20));
+
+		expect(table.getData("active").map(row => row.id)).toEqual([1, 3]);
+
+		clickItem(items, "London");
+
+		expect(table.getHeaderFilters()).toEqual([]);
+
+		//closing the list resolves the value again
+		document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+		expect(table.getHeaderFilters()).toEqual([]);
+
+		await new Promise(resolve => setTimeout(resolve, 20));
+
+		expect(table.getData("active").map(row => row.id)).toEqual([1, 2, 3]);
+	});
 });
