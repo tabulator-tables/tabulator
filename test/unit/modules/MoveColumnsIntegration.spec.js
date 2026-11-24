@@ -89,8 +89,8 @@ describe('MoveColumns integration: movable column groups', () => {
 		return false;
 	};
 
-	const mouse = (type, element, clientX = 0) => {
-		element.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, which:1, clientX}));
+	const mouse = (type, element, clientX = 0, init = {}) => {
+		element.dispatchEvent(new MouseEvent(type, {bubbles:true, cancelable:true, which:1, clientX, ...init}));
 	};
 
 	// the first title in a group's element is the group's own, its children's follow
@@ -107,6 +107,12 @@ describe('MoveColumns integration: movable column groups', () => {
 
 	const release = () => {
 		mouse("mouseup", document.body);
+	};
+
+	// a press and release on a header title, short of the move delay
+	const click = (title, init = {}) => {
+		mouse("mousedown", titleOf(title), 0, init);
+		mouse("mouseup", titleOf(title), 0, init);
 	};
 
 	const drag = (from, to, clientX) => {
@@ -367,18 +373,160 @@ describe('MoveColumns integration: movable column groups', () => {
 		expectHeaderHandles();
 	});
 
-	test('with column range selection, a dropped group leaves the range on its leaves', async () => {
-		table = await setupTable({selectableRange:true, selectableRangeColumns:true});
+	describe('with column range selection', () => {
+		const rangeOptions = {selectableRange:true, selectableRangeColumns:true};
 
-		// As for a leaf, a press on a header the range does not hold selects it and
-		// starts no move; the next press on the same header drags it
-		mouse("mousedown", titleOf("A"));
-		mouse("mouseup", titleOf("A"));
+		const rangeFields = (index = 0) => table.getRanges()[index].getColumns().map((column) => column.getField());
 
-		drag("A", "b2", 80);
+		const edges = (index = 0) => [table.getRanges()[index].getLeftEdge(), table.getRanges()[index].getRightEdge()];
 
-		expectOrder(["x", "b1", "b2", "a1", "a2", "g1", "h1", "h2"]);
-		expect(table.getRanges()[0].getColumns().map((column) => column.getField())).toEqual(["a1", "a2"]);
+		test('a click on a group header selects its leaves and the next press drags the group', async () => {
+			table = await setupTable(rangeOptions);
+
+			// as for a leaf, a press on a header the range does not hold selects it and
+			// starts no move; the next press on the same header drags it
+			click("A");
+
+			expect(rangeFields()).toEqual(["a1", "a2"]);
+			expect(edges()).toEqual([1, 2]);
+
+			drag("A", "b2", 80);
+
+			expectOrder(["x", "b1", "b2", "a1", "a2", "g1", "h1", "h2"]);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+			expect(rangeFields()).toEqual(["a1", "a2"]);
+		});
+
+		test.each([
+			["the leaves were selected one by one", "a1", "a2"],
+			["a wider range holds the group", "x", "b2"],
+		])('a group drags on its first press when %s', async (_name, start, end) => {
+			table = await setupTable(rangeOptions);
+
+			click(start);
+			click(end, {shiftKey:true});
+
+			drag("A", "b2", 80);
+
+			expectOrder(["x", "b1", "b2", "a1", "a2", "g1", "h1", "h2"]);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+			expect(columnMoved.mock.calls[0][0]).toBe(findColumn("A"));
+			expect(rangeFields()).toEqual(["a1", "a2"]);
+		});
+
+		test('a selected group does not let another group drag on its first press', async () => {
+			table = await setupTable(rangeOptions);
+
+			click("A");
+
+			press("B");
+			expect(document.querySelector(".tabulator-moving")).toBeNull();
+			expect(rangeFields()).toEqual(["b1", "b2"]);
+
+			// the press started a selection, so the move extends it and keeps its anchor on b1
+			hover("x", 0);
+			release();
+
+			expectOrder(leafFields);
+			expect(columnMoved).not.toHaveBeenCalled();
+			expect(rangeFields()).toEqual(["x", "a1", "a2", "b1"]);
+		});
+
+		test('a group with only one leaf selected does not drag on its first press', async () => {
+			table = await setupTable(rangeOptions);
+
+			click("a1");
+
+			press("A");
+			expect(document.querySelector(".tabulator-moving")).toBeNull();
+			expect(rangeFields()).toEqual(["a1", "a2"]);
+
+			hover("b2", 80);
+			release();
+
+			expectOrder(leafFields);
+			expect(columnMoved).not.toHaveBeenCalled();
+			expect(rangeFields()).toEqual(["a1", "a2", "b1", "b2"]);
+		});
+
+		test.each([
+			["a group holding a leaf and a nested group", "G", [], ["g1", "h1", "h2"]],
+			["a nested group", "H", [], ["h1", "h2"]],
+			["a group with a hidden leaf", "A", ["a2"], ["a1"]],
+		])('a click on %s selects its visible leaves', async (_name, title, hidden, expected) => {
+			table = await setupTable(rangeOptions);
+
+			hidden.forEach((field) => table.hideColumn(field));
+
+			click(title);
+
+			expect(rangeFields()).toEqual(expected);
+		});
+
+		test.each([
+			["from a column on its left", "x", ["x", "a1", "a2"]],
+			["from a column on its right", "b1", ["a1", "a2", "b1"]],
+		])('a shift-click on a group header extends the range over the whole group %s', async (_name, start, expected) => {
+			table = await setupTable(rangeOptions);
+
+			click(start);
+			click("A", {shiftKey:true});
+
+			expect(table.getRanges().length).toBe(1);
+			expect(rangeFields()).toEqual(expected);
+		});
+
+		test('a shift-click on a group header from one of its leaves keeps the start on that leaf', async () => {
+			table = await setupTable(rangeOptions);
+
+			click("a2");
+			click("A", {shiftKey:true});
+
+			expect(table.getRanges().length).toBe(1);
+			expect(rangeFields()).toEqual(["a2"]);
+		});
+
+		test('a ctrl-click on a group header adds a range over its leaves', async () => {
+			table = await setupTable(rangeOptions);
+
+			click("x");
+			click("A", {ctrlKey:true});
+
+			expect(table.getRanges().length).toBe(2);
+			expect(rangeFields(0)).toEqual(["x"]);
+			expect(rangeFields(1)).toEqual(["a1", "a2"]);
+		});
+
+		test('a right-click on a selected group header keeps the range', async () => {
+			table = await setupTable(rangeOptions);
+
+			click("A");
+			click("A", {button:2, which:3});
+
+			expect(rangeFields()).toEqual(["a1", "a2"]);
+		});
+
+		test('a selection dragged from a column onto a group header covers the whole group', async () => {
+			table = await setupTable(rangeOptions);
+
+			mouse("mousedown", titleOf("x"));
+			mouse("mousemove", titleOf("A"));
+			release();
+
+			expect(rangeFields()).toEqual(["x", "a1", "a2"]);
+		});
+
+		test.each([
+			["movableColumnGroups", {movableColumnGroups:undefined}],
+			["movableColumns", {movableColumns:false}],
+		])('with %s unset, a click on a group header keeps upstream\'s empty range', async (_name, unset) => {
+			table = await setupTable({...rangeOptions, ...unset});
+
+			click("A");
+
+			expect(edges()).toEqual([-1, -1]);
+			expect(rangeFields()).toEqual([]);
+		});
 	});
 
 	test('with column persistence, the saved layout holds the new group order', async () => {
