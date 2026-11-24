@@ -45,6 +45,55 @@ async function scrollToBottom(page: Page, step: number) {
 	await page.waitForTimeout(100);
 }
 
+// Counts the vertical scroll positions the table has handled. `scrollVertical`
+// fires at the end of the table's scroll listener, after the rows are updated.
+async function trackHandledScroll(page: Page) {
+	await page.waitForFunction(() => (window as any).testTable);
+	await page.locator(".tabulator-tableholder").evaluate((holder) => {
+		const w = window as any;
+		w.scrollSeen = { count: 0, top: holder.scrollTop };
+		w.testTable.on("scrollVertical", (top: number) => {
+			w.scrollSeen.count++;
+			w.scrollSeen.top = top;
+		});
+	});
+}
+
+// Resolves once the table has handled every vertical scroll position the browser
+// reached. Handling a scroll-up can insert rows above the viewport; the browser's
+// scroll anchoring may then move scrollTop again, and the table handles that move
+// on the next frame. A fixed wait could read the DOM between the two.
+async function waitForScrollHandled(page: Page, since = -1) {
+	await page.locator(".tabulator-tableholder").evaluate(
+		(holder, since) =>
+			new Promise<void>((resolve) => {
+				const seen = (window as any).scrollSeen;
+				let last = holder.scrollTop;
+				let stableFrames = 0;
+
+				const tick = () => {
+					const top = holder.scrollTop;
+
+					if (seen.count > since && top === last && top === seen.top) {
+						stableFrames++;
+						if (stableFrames >= 2) {
+							resolve();
+							return;
+						}
+					} else {
+						stableFrames = 0;
+						last = top;
+					}
+
+					requestAnimationFrame(tick);
+				};
+
+				requestAnimationFrame(tick);
+			}),
+		since,
+	);
+}
+
 // Scroll up `steps` times by `delta` px, returning the per-step jump samples.
 // `rowSelector` chooses which rows to track (grouped tables exclude the group
 // header rows so we follow a data row).
@@ -89,8 +138,14 @@ async function scrollUpAndMeasure(
 				};
 			}, rowSelector);
 
+		// At the top a wheel scrolls nothing and the table handles no new position.
+		if (!beforeScrolling || beforeScrolling.scrollTop === 0) {
+			break;
+		}
+
+		const since = await page.evaluate(() => (window as any).scrollSeen.count);
 		await page.mouse.wheel(0, -delta);
-		await page.waitForTimeout(20);
+		await waitForScrollHandled(page, since);
 
 		/** The state AFTER scrolling */
 		const after = await page.locator(".tabulator-tableholder").evaluate(
@@ -113,12 +168,8 @@ async function scrollUpAndMeasure(
 					scrollTop: holder.scrollTop,
 				};
 			},
-			{ rowSelector, id: beforeScrolling ? beforeScrolling.id : null },
+			{ rowSelector, id: beforeScrolling.id },
 		);
-
-		if (!beforeScrolling) {
-			break;
-		}
 
 		if (after.found) {
 			const moved = after.top - beforeScrolling.top; // screen movement (down +)
@@ -145,6 +196,7 @@ test.describe("Vertical scroll jumping with variable height rows (#3654)", () =>
 		await page.goto(`file://${join(__dirname, "scroll-jump.html")}`);
 		await page.waitForSelector(".tabulator-tableholder");
 		await page.locator(".tabulator-tableholder").hover();
+		await trackHandledScroll(page);
 	});
 
 	test("scrolling up after a fast scroll does not make content jump", async ({
@@ -157,7 +209,7 @@ test.describe("Vertical scroll jumping with variable height rows (#3654)", () =>
 		await page
 			.locator(".tabulator-tableholder")
 			.evaluate((holder) => (holder.scrollLeft = 300));
-		await page.waitForTimeout(50);
+		await waitForScrollHandled(page);
 
 		// 3. Scroll back up and measure the content jump.
 		const jumps = await scrollUpAndMeasure(page, 250, 40);
@@ -187,7 +239,7 @@ test.describe("Vertical scroll jumping with variable height rows (#3654)", () =>
 		await page
 			.locator(".tabulator-tableholder")
 			.evaluate((holder) => (holder.scrollLeft = 300));
-		await page.waitForTimeout(50);
+		await waitForScrollHandled(page);
 
 		const jumps = await scrollUpAndMeasure(page, 120, 30);
 		const worstJump = jumps.reduce(
@@ -205,6 +257,7 @@ test.describe("Vertical scroll jumping with grouped variable height rows (#3654)
 		await page.goto(`file://${join(__dirname, "scroll-jump-group.html")}`);
 		await page.waitForSelector(".tabulator-row");
 		await page.locator(".tabulator-tableholder").hover();
+		await trackHandledScroll(page);
 	});
 
 	test("scrolling up after a fast scroll does not make content jump", async ({
@@ -215,7 +268,7 @@ test.describe("Vertical scroll jumping with grouped variable height rows (#3654)
 		await page
 			.locator(".tabulator-tableholder")
 			.evaluate((holder) => (holder.scrollLeft = 300));
-		await page.waitForTimeout(50);
+		await waitForScrollHandled(page);
 
 		// Track data rows only, never the group header rows.
 		const jumps = await scrollUpAndMeasure(
