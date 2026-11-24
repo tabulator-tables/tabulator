@@ -65,7 +65,7 @@ export default class ResizeColumns extends Module{
 		var siblings;
 
 		//a move beside a group drops the element between a sibling and its header handle, so every sibling's handle is put back
-		if(this.table.options.movableColumnGroups && (column.isGroup || (to && to.isGroup))){
+		if(to && (column.isGroup || to.isGroup) && column.parent === to.parent){
 			siblings = column.parent.isGroup ? column.parent.columns : this.table.columnManager.columns;
 
 			siblings.forEach((sibling) => {

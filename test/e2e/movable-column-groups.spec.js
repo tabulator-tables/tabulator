@@ -110,4 +110,30 @@ test.describe("Movable column groups", () => {
 		const events = await page.evaluate(() => window.movedEvents);
 		expect(events).toEqual([{ title: "a1", fields: ["x", "a2", "a1", "b1", "b2", "c1"] }]);
 	});
+
+	test("moving a group with table.moveColumn moves its cells", async ({ page }) => {
+		// a group has no field, so it is passed as its column component
+		await page.evaluate(() => {
+			const groups = window.testTable.getColumns(true);
+			const groupA = groups.find((column) => column.getDefinition().title === "A");
+			const groupB = groups.find((column) => column.getDefinition().title === "B");
+
+			window.testTable.moveColumn(groupA, groupB, true);
+		});
+
+		expect(await leafFields(page)).toEqual(["x", "b1", "b2", "a1", "a2", "c1"]);
+
+		const lefts = await cellLefts(page);
+		expect(lefts.x).toBeLessThan(lefts.b1);
+		expect(lefts.b1).toBeLessThan(lefts.b2);
+		expect(lefts.b2).toBeLessThan(lefts.a1);
+		expect(lefts.a1).toBeLessThan(lefts.a2);
+		expect(lefts.a2).toBeLessThan(lefts.c1);
+
+		const headerA = await headerRect(page, "A");
+		expect(Math.round(headerA.x)).toBe(Math.round(lefts.a1));
+
+		const events = await page.evaluate(() => window.movedEvents);
+		expect(events).toHaveLength(1);
+	});
 });

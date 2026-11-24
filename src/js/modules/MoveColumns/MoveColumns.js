@@ -351,11 +351,7 @@ export default class MoveColumns extends Module{
 			this.table.element.classList.remove("tabulator-block-select");
 			
 			if(this.toCol){
-				if(this._isBlockMove(this.toCol)){
-					this.table.columnManager.moveColumnBlockActual(this.moving, this.toCol, this.toColAfter);
-				}else{
-					this.table.columnManager.moveColumnActual(this.moving, this.toCol, this.toColAfter);
-				}
+				this.table.columnManager.moveColumnActual(this.moving, this.toCol, this.toColAfter);
 			}
 
 			this.moving = false;

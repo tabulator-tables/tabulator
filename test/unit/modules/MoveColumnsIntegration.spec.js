@@ -373,6 +373,165 @@ describe('MoveColumns integration: movable column groups', () => {
 		expectHeaderHandles();
 	});
 
+	// a column group is not in columnsByIndex; these guard that a programmatic move of
+	// a group moves its leaves' cells, calc cells and resize handles with its header
+	describe('table.moveColumn and column.move with a column group', () => {
+		let originalOffsetParent;
+
+		const groupMovedOrder = ["x", "b1", "b2", "a1", "a2", "g1", "h1", "h2"];
+
+		const setupApiTable = (tableOptions = {}) => setupTable({movableColumns:false, movableColumnGroups:undefined, ...tableOptions});
+
+		const subTitles = (title) => findColumn(title).getSubColumns().map((column) => column.getDefinition().title);
+
+		// jsdom has no layout, so offsetParent is null and rows are not rebuilt after a
+		// move as a browser rebuilds them
+		beforeAll(() => {
+			originalOffsetParent = Object.getOwnPropertyDescriptor(window.HTMLElement.prototype, "offsetParent");
+
+			Object.defineProperty(window.HTMLElement.prototype, "offsetParent", {configurable:true, get(){ return this.isConnected ? document.body : null; }});
+		});
+
+		afterAll(() => {
+			if(originalOffsetParent){
+				Object.defineProperty(window.HTMLElement.prototype, "offsetParent", originalOffsetParent);
+			}else{
+				delete window.HTMLElement.prototype.offsetParent;
+			}
+		});
+
+		test.each([
+			["a default table", {}],
+			["movableColumns", {movableColumns:true}],
+			["movableColumns and movableColumnGroups", {movableColumns:true, movableColumnGroups:true}],
+		])('with %s, table.moveColumn moves a group\'s cells with its header', async (_name, options) => {
+			table = await setupApiTable(options);
+
+			table.moveColumn(findColumn("A"), findColumn("B"), true);
+
+			expectOrder(groupMovedOrder);
+			expect(topTitles()).toEqual(["x", "B", "A", "G"]);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+			expect(columnMoved.mock.calls[0][0]).toBe(findColumn("A"));
+			expect(columnMoved.mock.calls[0][1].map((column) => column.getField())).toEqual(groupMovedOrder);
+		});
+
+		test.each([
+			["a group before a plain sibling column", "A", "x", false, ["a1", "a2", "x", "b1", "b2", "g1", "h1", "h2"], ["A", "x", "B", "G"], ["g1", "H"]],
+			["a plain column after a sibling group", "x", "B", true, ["a1", "a2", "b1", "b2", "x", "g1", "h1", "h2"], ["A", "B", "x", "G"], ["g1", "H"]],
+			["a nested group before its sibling leaf", "H", "g1", false, ["x", "a1", "a2", "b1", "b2", "h1", "h2", "g1"], ["x", "A", "B", "G"], ["H", "g1"]],
+		])('column.move with %s moves the cells with the header', async (_name, from, to, after, order, titles, groupTitles) => {
+			table = await setupApiTable();
+
+			findColumn(from).move(findColumn(to), after);
+
+			expectOrder(order);
+			expect(topTitles()).toEqual(titles);
+			expect(subTitles("G")).toEqual(groupTitles);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+			expect(columnMoved.mock.calls[0][0]).toBe(findColumn(from));
+		});
+
+		test('a hidden leaf moves with its group', async () => {
+			var columns = defaultColumns();
+
+			columns[1].columns[1].visible = false;
+
+			table = await setupApiTable({columns});
+
+			table.moveColumn(findColumn("A"), findColumn("B"), true);
+
+			expect(fields()).toEqual(groupMovedOrder);
+			rowCellFields().forEach((rowFields) => expect(rowFields).toEqual(groupMovedOrder));
+			rowDomFields().forEach((rowFields) => expect(rowFields).toEqual(groupMovedOrder));
+			expect(findColumn("a2").isVisible()).toBe(false);
+		});
+
+		test('header resize handles follow a group moved after a sibling group', async () => {
+			table = await setupApiTable();
+
+			expectHeaderHandles();
+
+			table.moveColumn(findColumn("A"), findColumn("B"), true);
+
+			expect(topTitles()).toEqual(["x", "B", "A", "G"]);
+			expectHeaderHandles();
+		});
+
+		test('a bottom calc row follows a group moved after a sibling group', async () => {
+			table = await setupApiTable({columnDefaults:{width:50, headerSort:false, bottomCalc:"count"}});
+
+			table.moveColumn(findColumn("A"), findColumn("B"), true);
+
+			const calcFields = [...table.element.querySelectorAll(".tabulator-calcs-bottom .tabulator-cell")].map((el) => el.getAttribute("tabulator-field"));
+
+			expect(calcFields).toEqual(groupMovedOrder);
+		});
+
+		test('with a horizontal virtual DOM, the rendered cells follow a group moved after a sibling group', async () => {
+			table = await setupApiTable({renderHorizontal:"virtual"});
+
+			table.moveColumn(findColumn("A"), findColumn("B"), true);
+
+			expect(fields()).toEqual(groupMovedOrder);
+			rowCellFields().forEach((rowFields) => expect(rowFields).toEqual(groupMovedOrder));
+
+			// jsdom renders only a window of the columns: each row shows the first of them
+			rowDomFields().forEach((rowFields) => {
+				expect(rowFields.length).toBeGreaterThan(0);
+				expect(rowFields).toEqual(groupMovedOrder.slice(0, rowFields.length));
+			});
+		});
+
+		test('two leaves of one group move as upstream moves them', async () => {
+			table = await setupApiTable();
+
+			table.moveColumn("a1", "a2", true);
+
+			expectOrder(["x", "a2", "a1", "b1", "b2", "g1", "h1", "h2"]);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+		});
+
+		test('a leaf moved beside a leaf of another parent moves its cells and leaves the column definitions as they were', async () => {
+			table = await setupApiTable();
+
+			table.moveColumn("x", "b1", true);
+
+			expect(fields()).toEqual(["a1", "a2", "b1", "x", "b2", "g1", "h1", "h2"]);
+			rowCellFields().forEach((rowFields) => expect(rowFields).toEqual(["a1", "a2", "b1", "x", "b2", "g1", "h1", "h2"]));
+			expect(topTitles()).toEqual(["x", "A", "B", "G"]);
+		});
+
+		test('a group moved beside a column of another parent moves no cells', async () => {
+			table = await setupApiTable();
+
+			// upstream's outcome is kept; its header nests A inside B, which is not pinned here
+			table.moveColumn(findColumn("A"), findColumn("b1"), true);
+
+			expect(fields()).toEqual(leafFields);
+			rowCellFields().forEach((rowFields) => expect(rowFields).toEqual(leafFields));
+			expect(topTitles()).toEqual(["x", "A", "B", "G"]);
+			expect(columnMoved).toHaveBeenCalledTimes(1);
+		});
+
+		test('a group\'s title is not a lookup key: table.moveColumn with titles warns and changes nothing', async () => {
+			const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+			try{
+				table = await setupApiTable();
+
+				table.moveColumn("A", "B", true);
+
+				expect(warn).toHaveBeenCalled();
+				expectOrder(leafFields);
+				expect(topTitles()).toEqual(["x", "A", "B", "G"]);
+				expect(columnMoved).not.toHaveBeenCalled();
+			}finally{
+				warn.mockRestore();
+			}
+		});
+	});
+
 	describe('with column range selection', () => {
 		const rangeOptions = {selectableRange:true, selectableRangeColumns:true};
 

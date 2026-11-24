@@ -541,43 +541,27 @@ export default class ColumnManager extends CoreFeature {
 			this._moveColumnInArray(this.columns, from, to, after);
 		}
 		
-		this._moveColumnInArray(this.columnsByIndex, from, to, after, true);
+		//a column group is not in columnsByIndex: when either side is a group, the moving side's leaves move as one block beside the target, among siblings only
+		if((from.isGroup || to.isGroup) && from.parent === to.parent){
+			this._moveColumnBlockInIndex(from, to, after);
+		}else{
+			this._moveColumnInArray(this.columnsByIndex, from, to, after, true);
+		}
 		
 		this.rerenderColumns(true);
 		
 		this.dispatch("column-moved", from, to, after);
 		
+		//the first argument is the group's component when a group was moved, so getField() returns undefined
 		if(this.subscribedExternal("columnMoved")){
 			this.dispatchExternal("columnMoved", from.getComponent(), this.table.columnManager.getComponents());
 		}
 	}
 	
-	//move a column or a column group beside a sibling, either of which may be a group; used by the movableColumnGroups drag only
-	moveColumnBlockActual(from, to, after){
-		var leaves = from.isGroup ? from.getColumns(true).filter((column) => !column.isGroup) : [from],
-		anchor = after ? to.getLastColumn() : to.getFirstColumn();
-
-		if(from.parent.isGroup){
-			this._moveColumnInArray(from.parent.columns, from, to, after);
-		}else{
-			this._moveColumnInArray(this.columns, from, to, after);
-		}
-
-		this._moveColumnBlockInIndex(leaves, anchor, [from, to, after]);
-
-		this.rerenderColumns(true);
-
-		this.dispatch("column-moved", from, to, after);
-
-		//the first argument is the group's component when a group was dragged, so getField() returns undefined
-		if(this.subscribedExternal("columnMoved")){
-			this.dispatchExternal("columnMoved", from.getComponent(), this.table.columnManager.getComponents());
-		}
-	}
-
 	//moves the leaves together in columnsByIndex and in each row's cells, keeping their relative order
-	_moveColumnBlockInIndex(leaves, anchor, moveArgs){
-		var after = moveArgs[2],
+	_moveColumnBlockInIndex(from, to, after){
+		var leaves = from.isGroup ? from.getColumns(true).filter((column) => !column.isGroup) : [from],
+		anchor = after ? to.getLastColumn() : to.getFirstColumn(),
 		indexes = leaves.map((leaf) => this.columnsByIndex.indexOf(leaf)),
 		toIndex, rows, block;
 
@@ -604,7 +588,7 @@ export default class ColumnManager extends CoreFeature {
 
 		this.columnsByIndex.splice(toIndex, 0, ...block);
 
-		rows = this.chain("column-moving-rows", moveArgs, null, []) || [];
+		rows = this.chain("column-moving-rows", [from, to, after], null, []) || [];
 
 		rows = rows.concat(this.table.rowManager.rows);
 
