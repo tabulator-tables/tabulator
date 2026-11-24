@@ -354,13 +354,40 @@ export default class SelectRange extends Module {
 	}
 	
 	handleColumnMoving(_event, column) {
-		this.resetRanges().setBounds(column);
+		var leaves = this._movedGroupLeaves(column);
+
+		if(leaves){
+			this.resetRanges().setBounds(leaves[0], leaves[leaves.length - 1]);
+		}else{
+			this.resetRanges().setBounds(column);
+		}
+
 		this.overlay.style.visibility = "hidden";
 	}
 
 	handleColumnMoved(from, _to, _after) {
-		this.activeRange.setBounds(from);
+		var leaves = this._movedGroupLeaves(from);
+
+		if(leaves){
+			this.activeRange.setBounds(leaves[0], leaves[leaves.length - 1]);
+		}else{
+			this.activeRange.setBounds(from);
+		}
+
 		this.layoutElement();
+	}
+
+	//a group has no position of its own, so a range over a moved group spans its visible leaves
+	_movedGroupLeaves(column) {
+		var leaves;
+
+		if(!this.table.options.movableColumnGroups || !column.isGroup){
+			return false;
+		}
+
+		leaves = column.getColumns(true).filter((col) => !col.isGroup && col.visible);
+
+		return leaves.length ? leaves : false;
 	}
 
 	handleColumnMouseDown(event, column) {

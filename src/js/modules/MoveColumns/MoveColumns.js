@@ -25,6 +25,8 @@ export default class MoveColumns extends Module{
 		this.endMove = this.endMove.bind(this);
 		
 		this.registerTableOption("movableColumns", false); //enable movable columns
+		//drag a column group header to move the group among its siblings; needs movableColumns, columnMoved then receives the group's component
+		this.registerTableOption("movableColumnGroups", false);
 	}
 	
 	createPlaceholderElement(){
@@ -52,7 +54,7 @@ export default class MoveColumns extends Module{
 		config = {},
 		colEl;
 
-		if(!column.modules.frozen && !column.isGroup && !column.isRowHeader){
+		if(!column.modules.frozen && (!column.isGroup || this._groupMovable(column)) && !column.isRowHeader){
 			colEl = column.getElement();
 			
 			config.mousemove = function(e){
@@ -72,6 +74,11 @@ export default class MoveColumns extends Module{
 			}.bind(self);
 			
 			colEl.addEventListener("mousedown", function(e){
+				//a press on a child header bubbles up to its group; the child starts its own move
+				if(column.isGroup && column.getGroupElement().contains(e.target)){
+					return;
+				}
+
 				self.touchMove = false;
 				if(e.which === 1){
 					self.checkTimeout = setTimeout(function(){
@@ -88,10 +95,41 @@ export default class MoveColumns extends Module{
 				}
 			});
 			
-			self.bindTouchEvents(column);
+			//the touch path steps through leaves with nextColumn and prevColumn, which find no group
+			if(!column.isGroup){
+				self.bindTouchEvents(column);
+			}
 		}
 		
 		column.modules.moveColumn = config;
+	}
+
+	//frozen state is set on leaves only, each taking it from its top group
+	_groupMovable(column){
+		return !!this.table.options.movableColumnGroups && !column.getColumns(true).some((child) => child.modules.frozen);
+	}
+
+	//groups are not in columnsByIndex, so they are collected from the column tree
+	_getMovableGroups(){
+		var groups = [];
+
+		this.table.columnManager.columns.forEach((column) => {
+			[column].concat(column.getColumns(true)).forEach((col) => {
+				if(col.isGroup && col.modules.moveColumn && col.modules.moveColumn.mousemove){
+					groups.push(col);
+				}
+			});
+		});
+
+		return groups;
+	}
+
+	_getBlockLeaves(column){
+		return column.isGroup ? column.getColumns(true).filter((col) => !col.isGroup) : [column];
+	}
+
+	_isBlockMove(column){
+		return !!this.table.options.movableColumnGroups && (this.moving.isGroup || column.isGroup);
 	}
 	
 	bindTouchEvents(column){
@@ -220,6 +258,12 @@ export default class MoveColumns extends Module{
 				column.getElement().addEventListener("mousemove", column.modules.moveColumn.mousemove);
 			}
 		});
+
+		if(this.table.options.movableColumnGroups){
+			this._getMovableGroups().forEach((column) => {
+				column.getElement().addEventListener("mousemove", column.modules.moveColumn.mousemove);
+			});
+		}
 	}
 	
 	_unbindMouseMove(){
@@ -228,6 +272,12 @@ export default class MoveColumns extends Module{
 				column.getElement().removeEventListener("mousemove", column.modules.moveColumn.mousemove);
 			}
 		});
+
+		if(this.table.options.movableColumnGroups){
+			this._getMovableGroups().forEach((column) => {
+				column.getElement().removeEventListener("mousemove", column.modules.moveColumn.mousemove);
+			});
+		}
 	}
 	
 	moveColumn(column, after){
@@ -235,6 +285,11 @@ export default class MoveColumns extends Module{
 		
 		this.toCol = column;
 		this.toColAfter = after;
+		
+		if(this._isBlockMove(column)){
+			this._moveColumnBlockCells(column, after);
+			return;
+		}
 		
 		if(after){
 			column.getCells().forEach(function(cell, i){
@@ -255,6 +310,36 @@ export default class MoveColumns extends Module{
 		}
 	}
 	
+	//a group has no cells of its own: its leaves' cells move as one block beside the target's outer leaf
+	_moveColumnBlockCells(column, after){
+		var leaves = this._getBlockLeaves(this.moving),
+		anchor = after ? column.getLastColumn() : column.getFirstColumn();
+
+		if(!anchor){
+			return;
+		}
+
+		anchor.getCells().forEach((cell, i) => {
+			var cellEl = cell.getElement(true),
+			fragment;
+
+			if(cellEl.parentNode){
+				fragment = document.createDocumentFragment();
+
+				leaves.forEach((leaf) => {
+					var movingCell = leaf.getCells()[i];
+
+					if(movingCell){
+						fragment.appendChild(movingCell.getElement());
+					}
+				});
+
+				//the reference node is read once the moving cells are out of the row, so it is never one of them
+				cellEl.parentNode.insertBefore(fragment, after ? cellEl.nextSibling : cellEl);
+			}
+		});
+	}
+	
 	endMove(e){
 		if(e.which === 1 || this.touchMove){
 			this._unbindMouseMove();
@@ -266,7 +351,11 @@ export default class MoveColumns extends Module{
 			this.table.element.classList.remove("tabulator-block-select");
 			
 			if(this.toCol){
-				this.table.columnManager.moveColumnActual(this.moving, this.toCol, this.toColAfter);
+				if(this._isBlockMove(this.toCol)){
+					this.table.columnManager.moveColumnBlockActual(this.moving, this.toCol, this.toColAfter);
+				}else{
+					this.table.columnManager.moveColumnActual(this.moving, this.toCol, this.toColAfter);
+				}
 			}
 
 			this.moving = false;

@@ -552,6 +552,69 @@ export default class ColumnManager extends CoreFeature {
 		}
 	}
 	
+	//move a column or a column group beside a sibling, either of which may be a group; used by the movableColumnGroups drag only
+	moveColumnBlockActual(from, to, after){
+		var leaves = from.isGroup ? from.getColumns(true).filter((column) => !column.isGroup) : [from],
+		anchor = after ? to.getLastColumn() : to.getFirstColumn();
+
+		if(from.parent.isGroup){
+			this._moveColumnInArray(from.parent.columns, from, to, after);
+		}else{
+			this._moveColumnInArray(this.columns, from, to, after);
+		}
+
+		this._moveColumnBlockInIndex(leaves, anchor, [from, to, after]);
+
+		this.rerenderColumns(true);
+
+		this.dispatch("column-moved", from, to, after);
+
+		//the first argument is the group's component when a group was dragged, so getField() returns undefined
+		if(this.subscribedExternal("columnMoved")){
+			this.dispatchExternal("columnMoved", from.getComponent(), this.table.columnManager.getComponents());
+		}
+	}
+
+	//moves the leaves together in columnsByIndex and in each row's cells, keeping their relative order
+	_moveColumnBlockInIndex(leaves, anchor, moveArgs){
+		var after = moveArgs[2],
+		indexes = leaves.map((leaf) => this.columnsByIndex.indexOf(leaf)),
+		toIndex, rows, block;
+
+		if(!leaves.length || indexes.includes(-1) || !anchor){
+			return;
+		}
+
+		//a group's leaves are normally one slice, but a programmatic move of a single leaf can split them, so each is taken out by its own index, highest first
+		indexes.sort((a, b) => b - a);
+
+		const takeBlock = (list) => indexes.map((index) => list.splice(index, 1)[0]).reverse();
+
+		block = takeBlock(this.columnsByIndex);
+
+		toIndex = this.columnsByIndex.indexOf(anchor);
+
+		if(toIndex > -1){
+			if(after){
+				toIndex = toIndex + 1;
+			}
+		}else{
+			toIndex = indexes[indexes.length - 1];
+		}
+
+		this.columnsByIndex.splice(toIndex, 0, ...block);
+
+		rows = this.chain("column-moving-rows", moveArgs, null, []) || [];
+
+		rows = rows.concat(this.table.rowManager.rows);
+
+		rows.forEach((row) => {
+			if(row.cells.length){
+				row.cells.splice(toIndex, 0, ...takeBlock(row.cells));
+			}
+		});
+	}
+	
 	_moveColumnInArray(columns, from, to, after, updateRows){
 		var	fromIndex = columns.indexOf(from),
 		toIndex, rows = [];

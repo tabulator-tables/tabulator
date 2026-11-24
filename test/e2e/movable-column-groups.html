@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Tabulator Movable Column Groups Test</title>
+	<link rel="stylesheet" href="../../dist/css/tabulator.min.css" />
+	<script src="../../dist/js/tabulator.js"></script>
+	<style>
+	html, body {
+		margin: 0;
+		padding: 0;
+		font-family: Arial, sans-serif;
+	}
+	#test-table {
+		width: 800px;
+	}
+	</style>
+</head>
+<body>
+	<div id="test-table"></div>
+
+	<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		const fields = ["x", "a1", "a2", "b1", "b2", "c1"];
+		const testData = [];
+
+		for (let i = 1; i <= 5; i++) {
+			const row = { id: i };
+
+			fields.forEach(function (field) {
+				row[field] = field + "-" + i;
+			});
+
+			testData.push(row);
+		}
+
+		window.movedEvents = [];
+
+		window.testTable = new Tabulator("#test-table", {
+			data: testData,
+			columnDefaults: { width: 80, headerSort: false },
+			movableColumns: true,
+			movableColumnGroups: true,
+			columns: [
+				{ title: "x", field: "x" },
+				{ title: "A", columns: [
+					{ title: "a1", field: "a1" },
+					{ title: "a2", field: "a2" },
+				]},
+				{ title: "B", columns: [
+					{ title: "b1", field: "b1" },
+					{ title: "b2", field: "b2" },
+				]},
+				{ title: "C", columns: [
+					{ title: "c1", field: "c1" },
+				]},
+			],
+		});
+
+		window.testTable.on("columnMoved", function (column, columns) {
+			window.movedEvents.push({
+				title: column.getDefinition().title,
+				fields: columns.map(function (col) { return col.getField(); }),
+			});
+		});
+	});
+	</script>
+</body>
+</html>
