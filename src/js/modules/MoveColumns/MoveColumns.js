@@ -126,14 +126,20 @@ export default class MoveColumns extends Module{
 				
 				diff = e.touches[0].pageX - startXMove;
 				
+				//touch drops only where the mouse can: a sibling, not frozen, not the row header
+				//a step over any other column still counts, so a drag can pass a whole group
+				
 				if(diff > 0){
 					if(nextCol && diff - nextColWidthLast > nextColWidth){
 						moveToCol = nextCol;
 						
 						if(moveToCol !== column){
 							startXMove = e.touches[0].pageX;
-							moveToCol.getElement().parentNode.insertBefore(this.placeholderElement, moveToCol.getElement().nextSibling);
-							this.moveColumn(moveToCol, true);
+							
+							if(moveToCol.parent === column.parent && moveToCol.modules.moveColumn && moveToCol.modules.moveColumn.mousemove){
+								moveToCol.getElement().parentNode.insertBefore(this.placeholderElement, moveToCol.getElement().nextSibling);
+								this.moveColumn(moveToCol, true);
+							}
 						}
 					}
 				}else{
@@ -142,8 +148,11 @@ export default class MoveColumns extends Module{
 						
 						if(moveToCol !== column){
 							startXMove = e.touches[0].pageX;
-							moveToCol.getElement().parentNode.insertBefore(this.placeholderElement, moveToCol.getElement());
-							this.moveColumn(moveToCol, false);
+							
+							if(moveToCol.parent === column.parent && moveToCol.modules.moveColumn && moveToCol.modules.moveColumn.mousemove){
+								moveToCol.getElement().parentNode.insertBefore(this.placeholderElement, moveToCol.getElement());
+								this.moveColumn(moveToCol, false);
+							}
 						}
 					}
 				}
