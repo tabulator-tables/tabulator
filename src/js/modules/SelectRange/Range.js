@@ -17,6 +17,7 @@ export default class Range extends CoreFeature{
 			end:false,
 		};
 		this.destroyed = false;
+		this.selecting = "cell"; // what the range was selected by: cell, row, column or all
 		this.skipEvents = options.skipEvents || false;
 		
 		this.rect = options.rect ? options.rect.clone() : Rect.zero();
@@ -133,6 +134,8 @@ export default class Range extends CoreFeature{
 	setEndBound(element){
 		var rowsCount = this._getTableRows().length,
 		row, col, isRowHeader;
+		
+		this.selecting = this.rangeManager.selecting;
 		
 		if (element.type === "column") {
 			if(this.rangeManager.columnSelection){
@@ -290,6 +293,25 @@ export default class Range extends CoreFeature{
 	
 	occupiesColumn(col) {
 		return this.rect.left <= col.getPosition() - 1 && col.getPosition() - 1 <= this.rect.right;
+	}
+	
+	/**
+	 * @param {"row"|"column"|"all"|"header"|Cell|Row|Column} item
+	 */
+	contains(item) {
+		if (typeof item === "string") {
+			return item === "header" ? this.selecting !== "cell" : item === this.selecting;
+		}
+		
+		if (item && item.type === "row") {
+			return this.occupiesRow(item);
+		}
+		
+		if (item && item.type === "column") {
+			return this.occupiesColumn(item);
+		}
+		
+		return !!item && !!item.row && !!item.column && this.occupies(item);
 	}
 	
 	overlaps(left, top, right, bottom) {
