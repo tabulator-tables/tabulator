@@ -168,6 +168,7 @@ describe('MoveColumns touch drag', () => {
 		localStorage.clear();
 	});
 
+	// https://github.com/tabulator-tables/tabulator/issues/5020
 	describe('a column dragged onto a target the mouse would refuse stays where it is', () => {
 		it.each([
 			['a leaf dragged past its group\'s edge stays in its group', "a2", 1],

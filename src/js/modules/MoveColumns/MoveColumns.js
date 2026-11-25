@@ -126,6 +126,7 @@ export default class MoveColumns extends Module{
 				
 				diff = e.touches[0].pageX - startXMove;
 				
+				//https://github.com/tabulator-tables/tabulator/issues/5020
 				//touch drops only where the mouse can: a sibling, not frozen, not the row header
 				//a step over any other column still counts, so a drag can pass a whole group
 				
