@@ -583,6 +583,7 @@ export default class SelectRange extends Module {
 		}
 		
 		if(!expand){
+			range.selecting = "cell";
 			range.setStart(nextRow, nextCol);
 		}
 		

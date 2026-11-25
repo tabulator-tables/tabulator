@@ -137,3 +137,97 @@ describe("Range.setData", () => {
 		]);
 	});
 });
+
+describe("Range.contains", () => {
+	let table;
+	let module;
+
+	beforeEach(async () => {
+		document.body.innerHTML = "<div id=\"test-table\"></div>";
+
+		table = new TabulatorFull("#test-table", {
+			selectableRange: true,
+			selectableRangeColumns: true,
+			selectableRangeRows: true,
+			rowHeader: { formatter: "rownum", headerSort: false },
+			columnDefaults: { headerSort: false },
+			columns: [{ field: "name" }, { field: "age" }, { field: "city" }],
+			data: [
+				{ name: "A", age: 1, city: "X" },
+				{ name: "B", age: 2, city: "Y" },
+				{ name: "C", age: 3, city: "Z" },
+			],
+		});
+
+		await new Promise((resolve) => table.on("tableBuilt", resolve));
+		// the default range sets its bounds in a setTimeout
+		await new Promise((resolve) => setTimeout(resolve));
+
+		module = table.modules.selectRange;
+		module.layoutElement = () => {};
+	});
+
+	afterEach(() => {
+		table.destroy();
+	});
+
+	const select = (element, event = {}) => {
+		module.newSelection(event, element);
+		return table.getRanges().at(-1);
+	};
+	const cell = (row, field) => table.getRows()[row].getCell(field)._cell;
+	const column = (field) => table.getColumn(field)._column;
+	const types = (range) => ["row", "column", "all", "header"].filter((type) => range.contains(type));
+
+	test("knows which header the range was selected by", () => {
+		expect(types(select(cell(0, "name")))).toEqual([]);
+		expect(types(select(column("age")))).toEqual(["column", "header"]);
+		expect(types(select(module.rowHeader))).toEqual(["all", "header"]);
+
+		const rowHeaderCell = table.rowManager.getRows()[1].getCells().find((c) => c.column === module.rowHeader);
+		expect(types(select(rowHeaderCell))).toEqual(["row", "header"]);
+
+		expect(types(select(cell(1, "age")))).toEqual([]);
+	});
+
+	test("keeps the type of every range", () => {
+		const first = select(column("name"));
+		const second = select(cell(1, "age"), { ctrlKey: true });
+
+		expect(types(first)).toEqual(["column", "header"]);
+		expect(types(second)).toEqual([]);
+	});
+
+	test("a range that is extended to a cell is a cell range", () => {
+		select(column("name"));
+
+		expect(types(select(cell(1, "age"), { shiftKey: true }))).toEqual([]);
+	});
+
+	test("has the type when rangeChanged is dispatched", () => {
+		const seen = [];
+		table.on("rangeChanged", (range) => seen.push(range.contains("column")));
+		select(column("age"));
+		select(column("age"), { shiftKey: true });
+		table.getRanges()[0]._range.setEndBound(column("city"));
+
+		expect(seen).toContain(true);
+		expect(seen.at(-1)).toBe(true);
+	});
+
+	test("finds cell, row and column components", () => {
+		const range = select(cell(0, "name"));
+		select(cell(1, "age"), { shiftKey: true });
+		const rows = table.getRows();
+
+		expect(range.contains(rows[1].getCell("name"))).toBe(true);
+		expect(range.contains(rows[2].getCell("name"))).toBe(false);
+		expect(range.contains(rows[1].getCell("city"))).toBe(false);
+		expect(range.contains(rows[0])).toBe(true);
+		expect(range.contains(rows[2])).toBe(false);
+		expect(range.contains(table.getColumn("age"))).toBe(true);
+		expect(range.contains(table.getColumn("city"))).toBe(false);
+		expect(range.contains("cell type")).toBe(false);
+		expect(range.contains(undefined)).toBe(false);
+	});
+});

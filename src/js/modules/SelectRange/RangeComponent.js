@@ -61,6 +61,14 @@ export default class RangeComponent {
 		return this._range.rect.right;
 	}
 
+	contains(item){
+		if(item && typeof item === "object"){
+			item = item._cell || item._row || item._column || item;
+		}
+
+		return this._range.contains(item);
+	}
+
 	setBounds(start, end){
 		if(this._range.destroyedGuard("setBounds")){
 			this._range.setBounds(start ? start._cell : start, end ? end._cell : end);
