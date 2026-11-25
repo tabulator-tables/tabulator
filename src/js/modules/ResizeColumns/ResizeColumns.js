@@ -32,7 +32,7 @@ export default class ResizeColumns extends Module{
 			this.subscribe("cell-delete", this.deInitializeComponent.bind(this));
 			
 			this.subscribe("cell-height", this.resizeHandle.bind(this));
-			this.subscribe("column-moved", this.columnLayoutUpdated.bind(this));
+			this.subscribe("column-moved", this.columnMoved.bind(this));
 			
 			this.subscribe("column-hide", this.deInitializeColumn.bind(this));
 			this.subscribe("column-show", this.columnLayoutUpdated.bind(this));
@@ -61,6 +61,41 @@ export default class ResizeColumns extends Module{
 		}
 	}
 	
+	columnMoved(column, to){
+		var siblings;
+
+		//a move beside a group drops the element between a sibling and its header handle, so every sibling's handle is put back
+		if(to && (column.isGroup || to.isGroup) && column.parent === to.parent){
+			siblings = column.parent.isGroup ? column.parent.columns : this.table.columnManager.columns;
+
+			siblings.forEach((sibling) => {
+				if(sibling.modules.resize && sibling.modules.resize.handleEl){
+					sibling.element.after(sibling.modules.resize.handleEl);
+				}
+			});
+
+			this._placeMovedBlockHandles(column);
+		}else{
+			this.columnLayoutUpdated(column);
+		}
+	}
+
+	//a moved block's cells leave their own handles behind in each row and take the place of the handle of the leaf now before them
+	_placeMovedBlockHandles(column){
+		var first = column.getFirstColumn(),
+		prev = first ? first.prevColumn() : false;
+
+		this.reinitializeColumn(column);
+
+		column.getColumns(true).forEach((leaf) => {
+			this.reinitializeColumn(leaf);
+		});
+
+		if(prev){
+			this.reinitializeColumn(prev);
+		}
+	}
+
 	columnLayoutUpdated(column){
 		var prev = column.prevColumn();
 		

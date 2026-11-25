@@ -47,6 +47,7 @@ data is inline (no AJAX).
 | 8 | `08-frozen-responsive.html` | Frozen, movable, resizable and responsive-collapse columns |
 | 9 | `09-tree-data.html` | Nested tree data (`_children`), expand/collapse, tree-wide totals |
 | 10 | `10-full-demo.html` | Kitchen sink: editing, grouping, calcs, selection, add/delete, download, persistence |
+| 12 | `12-movable-column-groups.html` | Dragging column group headers (`movableColumnGroups`), nested groups, live order readout |
 
 ## Dependencies
 

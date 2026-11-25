@@ -354,23 +354,63 @@ export default class SelectRange extends Module {
 	}
 	
 	handleColumnMoving(_event, column) {
-		this.resetRanges().setBounds(column);
+		var leaves = this._groupLeaves(column);
+
+		if(leaves){
+			this.resetRanges().setBounds(leaves[0], leaves[leaves.length - 1]);
+		}else{
+			this.resetRanges().setBounds(column);
+		}
+
 		this.overlay.style.visibility = "hidden";
 	}
 
 	handleColumnMoved(from, _to, _after) {
-		this.activeRange.setBounds(from);
+		var leaves = this._groupLeaves(from);
+
+		if(leaves){
+			this.activeRange.setBounds(leaves[0], leaves[leaves.length - 1]);
+		}else{
+			this.activeRange.setBounds(from);
+		}
+
 		this.layoutElement();
 	}
 
+	//a group header has no position of its own: with movableColumns and movableColumnGroups on,
+	//it stands for its visible leaves, so a press, an extension or a move spans them
+	_groupLeaves(column) {
+		var leaves;
+
+		if(!this.table.options.movableColumns || !this.table.options.movableColumnGroups || !column.isGroup){
+			return false;
+		}
+
+		leaves = column.getColumns(true).filter((col) => !col.isGroup && col.visible);
+
+		return leaves.length ? leaves : false;
+	}
+
+	_rangeHoldsColumn(range, column) {
+		var leaves = this._groupLeaves(column);
+
+		return leaves ? leaves.every((leaf) => range.occupiesColumn(leaf)) : range.occupiesColumn(column);
+	}
+
+	//the leaf on the far side of the range's start: a range extended from outside the group covers
+	//it whole; from a leaf inside it the start stays and the range ends on the group's last leaf
+	_groupEnd(range, leaves) {
+		return range.start.col > leaves[leaves.length - 1].getPosition() - 1 ? leaves[0] : leaves[leaves.length - 1];
+	}
+
 	handleColumnMouseDown(event, column) {
-		if (event.button === 2 && (this.selecting === "column" || this.selecting === "all") && this.activeRange.occupiesColumn(column)) {
+		if (event.button === 2 && (this.selecting === "column" || this.selecting === "all") && this._rangeHoldsColumn(this.activeRange, column)) {
 			return;
 		}
 
 		//If columns are movable, allow dragging columns only if they are not
 		//selected. Dragging selected columns should move the columns instead.
-		if(this.table.options.movableColumns && this.selecting === "column" && this.activeRange.occupiesColumn(column)){
+		if(this.table.options.movableColumns && this.selecting === "column" && this._rangeHoldsColumn(this.activeRange, column)){
 			return;
 		}
 		
@@ -386,7 +426,9 @@ export default class SelectRange extends Module {
 			return;
 		}
 		
-		this.activeRange.setBounds(false, column, true);
+		var leaves = this._groupLeaves(column);
+
+		this.activeRange.setBounds(false, leaves ? this._groupEnd(this.activeRange, leaves) : column, true);
 	}
 	
 	///////////////////////////////////
@@ -770,6 +812,20 @@ export default class SelectRange extends Module {
 				return;
 			} else {
 				this.selecting = "column";
+
+				let leaves = this._groupLeaves(element);
+
+				if(leaves){
+					if (event.shiftKey) {
+						this.activeRange.setBounds(false, this._groupEnd(this.activeRange, leaves), true);
+					} else if (event.ctrlKey) {
+						this.addRange().setBounds(leaves[0], leaves[leaves.length - 1], true);
+					} else {
+						this.resetRanges().setBounds(leaves[0], leaves[leaves.length - 1], true);
+					}
+
+					return;
+				}
 			}
 		} else if (element.column === this.rowHeader) {
 			this.selecting = "row";
