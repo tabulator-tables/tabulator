@@ -64,6 +64,9 @@ export default class Filter extends Module{
 		this.subscribe("column-width-fit-after", this.showHeaderFilterElements.bind(this));
 		this.subscribe("table-built", this.tableBuilt.bind(this));
 		this.subscribe("placeholder", this.generatePlaceholder.bind(this));
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		this.subscribe("column-delete", this.unbindHeaderFilter.bind(this));
+		this.subscribe("columns-loading", this.releaseHeaderFilterColumns.bind(this));
 
 		if(this.table.options.filterMode === "remote"){
 			this.subscribe("data-params", this.remoteFilterParams.bind(this));
@@ -317,6 +320,9 @@ export default class Filter extends Module{
 			onRenderedCallback = callback;
 		}
 
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		this.unbindHeaderFilter(column);
+
 		if(column.modules.filter.headerElement && column.modules.filter.headerElement.parentNode){
 			column.contentElement.removeChild(column.modules.filter.headerElement.parentNode);
 		}
@@ -417,7 +423,7 @@ export default class Filter extends Module{
 				}
 
 				//set Placeholder Text
-				self.langBind("headerFilters|columns|" + column.definition.field, function(value){
+				column.modules.filter.placeholderUnbind = self.langBind("headerFilters|columns|" + column.definition.field, function(value){
 					editorElement.setAttribute("placeholder", typeof value !== "undefined" && value ? value : (column.definition.headerFilterPlaceholder || self.langText("headerFilters|default")));
 				});
 
@@ -508,6 +514,24 @@ export default class Filter extends Module{
 		}else{
 			console.warn("Filter Error - Cannot add header filter, column has no field set:", column.definition.title);
 		}
+	}
+
+	//remove the localization binding of a column's header filter placeholder
+	unbindHeaderFilter(column){
+		if(column.modules.filter && column.modules.filter.placeholderUnbind){
+			column.modules.filter.placeholderUnbind();
+			column.modules.filter.placeholderUnbind = null;
+		}
+	}
+
+	//release the header filters of the columns that are being replaced
+	// https://github.com/tabulator-tables/tabulator/issues/5028
+	releaseHeaderFilterColumns(){
+		this.headerFilterColumns.forEach((column) => {
+			this.unbindHeaderFilter(column);
+		});
+
+		this.headerFilterColumns = [];
 	}
 
 	//hide all header filter elements (used to ensure correct column widths in "fitData" layout mode)

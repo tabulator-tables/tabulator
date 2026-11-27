@@ -19,6 +19,13 @@ export default class Page extends Module{
 		this.pageCounterElement = null;
 		this.pageCounter = null;
 		
+		//localization bindings of the elements rebuilt on each render
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		this.pageButtonBindings = [];
+		this.pageCounterBindings = new Map(); //counter element -> its bindings
+		this.pageCounterSink = null; //set while the counter is called
+		this.pageSizeBindings = [];
+		
 		this.size = 0;
 		this.page = 1;
 		this.count = 5;
@@ -295,6 +302,10 @@ export default class Page extends Module{
 				}
 			}
 			
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			this.pageSizeBindings.forEach((unbind) => unbind());
+			this.pageSizeBindings = [];
+			
 			while(this.pageSizeSelect.firstChild) this.pageSizeSelect.removeChild(this.pageSizeSelect.firstChild);
 			
 			pageSizes.forEach((item) => {
@@ -302,9 +313,9 @@ export default class Page extends Module{
 				itemEl.value = item;
 				
 				if(item === true){
-					this.langBind("pagination|all", function(value){
+					this.pageSizeBindings.push(this.langBind("pagination|all", function(value){
 						itemEl.innerHTML = value;
-					});
+					}));
 				}else{
 					itemEl.innerHTML = item;
 				}
@@ -573,7 +584,7 @@ export default class Page extends Module{
 	}
 	
 	_setPageCounter(totalRows, size, currentRow){
-		var content;
+		var content, callBindings, outerSink;
 		
 		if(this.pageCounter){
 
@@ -583,7 +594,22 @@ export default class Page extends Module{
 				totalRows = this.remoteRowCountEstimate;
 			}
 
-			content = this.pageCounter.call(this, size, currentRow, this.page, totalRows, this.max);
+			//the default counters register the bindings of the element they build, a sink per call
+			//so a counter that throws or renders again cannot leave or release another call's entries
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			callBindings = new Map();
+			outerSink = this.pageCounterSink;
+			this.pageCounterSink = callBindings;
+
+			try{
+				content = this.pageCounter.call(this, size, currentRow, this.page, totalRows, this.max);
+			}finally{
+				this.pageCounterSink = outerSink;
+
+				callBindings.forEach((bindings, element) => {
+					this.pageCounterBindings.set(element, bindings);
+				});
+			}
 			
 			switch(typeof content){
 				case "object":
@@ -607,6 +633,15 @@ export default class Page extends Module{
 				default:
 					this.pageCounterElement.innerHTML = content;
 			}
+			
+			//release the bindings of every element no longer shown, in the counter or elsewhere in the document
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			this.pageCounterBindings.forEach((bindings, element) => {
+				if(!((content instanceof Node && content.contains(element)) || element.isConnected)){
+					bindings.forEach((unbind) => unbind());
+					this.pageCounterBindings.delete(element);
+				}
+			});
 		}
 	}
 	
@@ -616,6 +651,10 @@ export default class Page extends Module{
 		let rightSize = Math.ceil((this.count-1) / 2);
 		let min = this.max - this.page + leftSize + 1 < this.count ? this.max-this.count+1: Math.max(this.page-leftSize,1);
 		let max = this.page <= rightSize? Math.min(this.count, this.max) :Math.min(this.page+rightSize, this.max);
+		
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		this.pageButtonBindings.forEach((unbind) => unbind());
+		this.pageButtonBindings = [];
 		
 		while(this.pagesElement.firstChild) this.pagesElement.removeChild(this.pagesElement.firstChild);
 		
@@ -655,10 +694,10 @@ export default class Page extends Module{
 		button.setAttribute("type", "button");
 		button.setAttribute("role", "button");
 		
-		this.langBind("pagination|page_title", (value) => {
+		this.pageButtonBindings.push(this.langBind("pagination|page_title", (value) => {
 			button.setAttribute("aria-label", value + " " + page);
 			button.setAttribute("title", value + " " + page);
-		});
+		}));
 		
 		button.setAttribute("data-page", page);
 		button.textContent = page;

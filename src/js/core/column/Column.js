@@ -34,6 +34,7 @@ export default class Column extends CoreFeature{
 		
 		this.titleDownload = null;
 		this.titleFormatterRendered = false;
+		this.titleUnbind = null; //removes the localization binding of the title
 		
 		this.mapDefinitions();
 		
@@ -276,7 +277,8 @@ export default class Column extends CoreFeature{
 			titleHolderElement.appendChild(titleElement);
 			
 			if(def.field){
-				this.langBind("columns|" + def.field, (text) => {
+				// https://github.com/tabulator-tables/tabulator/issues/5028
+				this.titleUnbind = this.langBind("columns|" + def.field, (text) => {
 					titleElement.value = text || (def.title || "&nbsp;");
 				});
 			}else{
@@ -285,7 +287,8 @@ export default class Column extends CoreFeature{
 			
 		}else{
 			if(def.field){
-				this.langBind("columns|" + def.field, (text) => {
+				// https://github.com/tabulator-tables/tabulator/issues/5028
+				this.titleUnbind = this.langBind("columns|" + def.field, (text) => {
 					this._formatColumnHeaderTitle(titleHolderElement, text || (def.title || "&nbsp;"));
 				});
 			}else{
@@ -789,6 +792,18 @@ export default class Column extends CoreFeature{
 		});
 	}
 	
+	//remove the localization binding of the header title, and of any child columns
+	unbindTitle(){
+		if(this.titleUnbind){
+			this.titleUnbind();
+			this.titleUnbind = null;
+		}
+		
+		this.columns.forEach((column) => {
+			column.unbindTitle();
+		});
+	}
+	
 	delete(){
 		return new Promise((resolve, reject) => {
 			if(this.isGroup){
@@ -798,6 +813,9 @@ export default class Column extends CoreFeature{
 			}
 			
 			this.dispatch("column-delete", this);
+			
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			this.unbindTitle();
 			
 			var cellCount = this.cells.length;
 			

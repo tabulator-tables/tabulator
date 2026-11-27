@@ -260,6 +260,12 @@ export default class ColumnManager extends CoreFeature {
 	}
 	
 	setColumns(cols, row){
+		//the columns being replaced are not deleted, release their title bindings
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		this.columns.forEach((column) => {
+			column.unbindTitle();
+		});
+		
 		while(this.headersElement.firstChild) this.headersElement.removeChild(this.headersElement.firstChild);
 		
 		this.columns = [];
