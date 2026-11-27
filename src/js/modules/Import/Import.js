@@ -75,7 +75,14 @@ export default class Import extends Module{
 			return this.pickFile(extension, importReader)
 				.then(this.importData.bind(this, importer))
 				.then(this.structureData.bind(this))
-				.then(this.mutateData.bind(this))
+				.then((data) => {
+					//a build without the Mutator module has nothing to transform with
+					if(this.table.modExists("mutator")){
+						return this.mutateData(data);
+					}
+					
+					return data;
+				})
 				.then(this.validateData.bind(this))
 				.then(this.setData.bind(this))
 				.catch((err) => {

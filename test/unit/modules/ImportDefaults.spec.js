@@ -283,6 +283,53 @@ describe('Import defaults', function(){
 		});
 	});
 
+	describe('table.import in a build without Mutator', function(){
+		let table;
+
+		afterEach(function(){
+			jest.restoreAllMocks();
+			table.destroy();
+		});
+
+		test('resolves and loads the rows of a picked csv file', async function(){
+			let Tabulator, ImportModule;
+
+			//a fresh module registry: TabulatorFull above has bound every module in this file's one
+			jest.isolateModules(function(){
+				Tabulator = require('../../../src/js/core/Tabulator.js').default;
+				ImportModule = require('../../../src/js/modules/Import/Import.js').default;
+			});
+
+			Tabulator.registerModule([ImportModule]);
+
+			jest.spyOn(console, "error").mockImplementation(() => {});
+			jest.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function(){
+				let file = new File(["name,age\nJohn,25"], "t.csv", {type:"text/plain"});
+
+				Object.defineProperty(this, "files", {value:[file], configurable:true});
+				this.dispatchEvent(new Event("change"));
+			});
+
+			let element = document.createElement("div");
+
+			table = new Tabulator(element, {
+				columns:[{title:"name", field:"name"}, {title:"age", field:"age"}]
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			expect(table.modExists("mutator")).toBe(false);
+
+			let result = await table.import("csv", ".csv").then(
+				() => ({resolved:true}),
+				(err) => ({err:String(err)})
+			);
+
+			expect(result).toEqual({resolved:true});
+			expect(table.getData()).toEqual([{name:"John", age:"25"}]);
+		}, 2000);
+	});
+
 	describe('an importer that throws', function(){
 		let table;
 		let failure = new Error("importer failed");
