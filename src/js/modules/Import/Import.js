@@ -30,10 +30,16 @@ export default class Import extends Module{
 	}
 	
 	loadDataCheck(data){
-		return this.table.options.importFormat && (typeof data === "string" || (Array.isArray(data) && data.length && Array.isArray(data)));
+		//an array of row objects is loaded as given, only an array of arrays is imported
+		return this.table.options.importFormat && (typeof data === "string" || (Array.isArray(data) && data.length && Array.isArray(data[0])));
 	}
 	
 	loadData(data, params, config, silent, previousData){
+		//a load the importer does not claim (an ajaxURL load with importFormat set) goes on to the next handler
+		if(!this.loadDataCheck(data)){
+			return previousData;
+		}
+
 		return this.importData(this.lookupImporter(), data)
 			.then(this.structureData.bind(this))
 			.catch((err) => {
@@ -69,7 +75,14 @@ export default class Import extends Module{
 			return this.pickFile(extension, importReader)
 				.then(this.importData.bind(this, importer))
 				.then(this.structureData.bind(this))
-				.then(this.mutateData.bind(this))
+				.then((data) => {
+					//a build without the Mutator module has nothing to transform with
+					if(this.table.modExists("mutator")){
+						return this.mutateData(data);
+					}
+					
+					return data;
+				})
 				.then(this.validateData.bind(this))
 				.then(this.setData.bind(this))
 				.catch((err) => {
@@ -149,7 +162,13 @@ export default class Import extends Module{
 		
 		return new Promise((resolve, reject) => {
 			setTimeout(() => {
-				data = importer.call(this.table, fileContents);
+				//a throw inside the timer would leave the promise pending and skip the error handlers
+				try{
+					data = importer.call(this.table, fileContents);
+				}catch(err){
+					reject(err);
+					return;
+				}
 				
 				if(data instanceof Promise){
 					resolve(data);
@@ -219,9 +238,10 @@ export default class Import extends Module{
 	}
 	
 	structureArrayToObject(parsedData){
-		var columns = this.transformHeader(parsedData.shift());	
+		//read the header and rows without shift(), which would remove them from the caller's array
+		var columns = this.transformHeader(parsedData[0]);	
 		
-		var data = parsedData.map((values) => {
+		var data = parsedData.slice(1).map((values) => {
 			var row = {};
 
 			values = this.transformData(values);
@@ -244,7 +264,8 @@ export default class Import extends Module{
 		//remove first row if it is the column names
 		if(columns[0] && firstRow[0]){
 			if(columns[0].getDefinition().title === firstRow[0]){
-				parsedData.shift();
+				//slice, not shift(): the caller's array is left intact
+				parsedData = parsedData.slice(1);
 			}
 		}
 		
