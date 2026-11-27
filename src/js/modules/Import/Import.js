@@ -30,7 +30,8 @@ export default class Import extends Module{
 	}
 	
 	loadDataCheck(data){
-		return this.table.options.importFormat && (typeof data === "string" || (Array.isArray(data) && data.length && Array.isArray(data)));
+		//an array of row objects is loaded as given, only an array of arrays is imported
+		return this.table.options.importFormat && (typeof data === "string" || (Array.isArray(data) && data.length && Array.isArray(data[0])));
 	}
 	
 	loadData(data, params, config, silent, previousData){

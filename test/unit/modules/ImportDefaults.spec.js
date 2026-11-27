@@ -205,6 +205,29 @@ describe('Import defaults', function(){
 		});
 	});
 
+	describe('importFormat "array"', function(){
+		let table;
+
+		afterEach(function(){
+			table.destroy();
+		});
+
+		test('imports an array of arrays set with setData', async function(){
+			let element = document.createElement("div");
+
+			table = new TabulatorFull(element, {
+				importFormat:"array",
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			await table.setData([["name","age"],["John","25"]]);
+
+			expect(table.getData()).toEqual([{name:"John", age:"25"}]);
+		});
+	});
+
 	describe('importFormat "csv"', function(){
 		let table;
 
@@ -224,6 +247,21 @@ describe('Import defaults', function(){
 			await new Promise(resolve => table.on("dataProcessed", resolve));
 
 			expect(table.getData()).toEqual([{name:"John", age:"25"}]);
+		});
+
+		test('loads an array of row objects set with setData as given', async function(){
+			let element = document.createElement("div");
+
+			table = new TabulatorFull(element, {
+				importFormat:"csv",
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			await table.setData([{name:"John", age:25}]);
+
+			expect(table.getData()).toEqual([{name:"John", age:25}]);
 		});
 	});
 });
