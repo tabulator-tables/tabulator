@@ -83,6 +83,18 @@ describe('Import defaults', function(){
 			expect(json('[["name","age"],["John",25]]')).toEqual([["name", "age"], ["John", 25]]);
 		});
 
+		test('returns an already parsed value unchanged and does not warn', function(){
+			let warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+			let input = [["a"]];
+
+			try{
+				expect(json(input)).toBe(input);
+				expect(warnSpy).not.toHaveBeenCalled();
+			}finally{
+				warnSpy.mockRestore();
+			}
+		});
+
 		test('warns and returns a rejected promise for invalid JSON', async function(){
 			let warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -166,6 +178,29 @@ describe('Import defaults', function(){
 			await new Promise(resolve => table.on("dataProcessed", resolve));
 
 			expect(XLSX.read).toHaveBeenCalledWith("file contents");
+			expect(table.getData()).toEqual([{name:"John", age:25}]);
+		});
+	});
+
+	describe('importFormat "json"', function(){
+		let table;
+
+		afterEach(function(){
+			table.destroy();
+		});
+
+		test('loads table data from a JSON string set with setData', async function(){
+			let element = document.createElement("div");
+
+			table = new TabulatorFull(element, {
+				importFormat:"json",
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			await table.setData('[["name","age"],["John",25]]');
+
 			expect(table.getData()).toEqual([{name:"John", age:25}]);
 		});
 	});
