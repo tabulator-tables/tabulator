@@ -226,6 +226,54 @@ describe('Import defaults', function(){
 
 			expect(table.getData()).toEqual([{name:"John", age:"25"}]);
 		});
+
+		test('leaves the array passed to setData intact, so a second load gives the same rows', async function(){
+			let element = document.createElement("div");
+
+			table = new TabulatorFull(element, {
+				importFormat:"array",
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			let arr = [["name","age"],["John","25"],["Jane","30"]];
+
+			await table.setData(arr);
+			let first = table.getData();
+
+			await table.setData(arr);
+
+			expect(arr.length).toBe(3);
+			expect(arr[0]).toEqual(["name","age"]);
+			expect(first).toEqual([{name:"John", age:"25"}, {name:"Jane", age:"30"}]);
+			expect(table.getData()).toEqual(first);
+		});
+
+		test('leaves the array passed to setData intact when the columns are defined and the header row is present', async function(){
+			let element = document.createElement("div");
+
+			table = new TabulatorFull(element, {
+				importFormat:"array",
+				columns:[
+					{title:"name", field:"name"},
+					{title:"age", field:"age"}
+				]
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			let arr = [["name","age"],["John","25"],["Jane","30"]];
+
+			await table.setData(arr);
+			let first = table.getData();
+
+			await table.setData(arr);
+
+			expect(arr.length).toBe(3);
+			expect(first).toEqual([{name:"John", age:"25"}, {name:"Jane", age:"30"}]);
+			expect(table.getData()).toEqual(first);
+		});
 	});
 
 	describe('importFormat "csv"', function(){

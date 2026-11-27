@@ -238,9 +238,10 @@ export default class Import extends Module{
 	}
 	
 	structureArrayToObject(parsedData){
-		var columns = this.transformHeader(parsedData.shift());	
+		//read the header and rows without shift(), which would remove them from the caller's array
+		var columns = this.transformHeader(parsedData[0]);	
 		
-		var data = parsedData.map((values) => {
+		var data = parsedData.slice(1).map((values) => {
 			var row = {};
 
 			values = this.transformData(values);
@@ -263,7 +264,8 @@ export default class Import extends Module{
 		//remove first row if it is the column names
 		if(columns[0] && firstRow[0]){
 			if(columns[0].getDefinition().title === firstRow[0]){
-				parsedData.shift();
+				//slice, not shift(): the caller's array is left intact
+				parsedData = parsedData.slice(1);
 			}
 		}
 		
