@@ -35,6 +35,11 @@ export default class Import extends Module{
 	}
 	
 	loadData(data, params, config, silent, previousData){
+		//a load the importer does not claim (an ajaxURL load with importFormat set) goes on to the next handler
+		if(!this.loadDataCheck(data)){
+			return previousData;
+		}
+
 		return this.importData(this.lookupImporter(), data)
 			.then(this.structureData.bind(this))
 			.catch((err) => {

@@ -263,5 +263,23 @@ describe('Import defaults', function(){
 
 			expect(table.getData()).toEqual([{name:"John", age:25}]);
 		});
+
+		test('leaves an ajaxURL load to the ajax request when importFormat is set', async function(){
+			let element = document.createElement("div");
+			let rows = [{name:"John", age:25}];
+			let ajaxRequestFunc = jest.fn(() => Promise.resolve(rows));
+
+			table = new TabulatorFull(element, {
+				importFormat:"csv",
+				autoColumns:true,
+				ajaxURL:"http://test.example/data",
+				ajaxRequestFunc
+			});
+
+			await new Promise(resolve => table.on("dataProcessed", resolve));
+
+			expect(ajaxRequestFunc).toHaveBeenCalledTimes(1);
+			expect(table.getData()).toEqual(rows);
+		});
 	});
 });
