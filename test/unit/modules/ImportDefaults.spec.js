@@ -282,4 +282,75 @@ describe('Import defaults', function(){
 			expect(table.getData()).toEqual(rows);
 		});
 	});
+
+	describe('an importer that throws', function(){
+		let table;
+		let failure = new Error("importer failed");
+		let throwingImporter = function(){
+			throw failure;
+		};
+
+		afterEach(function(){
+			jest.clearAllTimers();
+			jest.useRealTimers();
+			jest.restoreAllMocks();
+			table.destroy();
+		});
+
+		test('fires dataLoadError with the thrown error and settles setData', async function(){
+			let element = document.createElement("div");
+			let onError = jest.fn();
+
+			table = new TabulatorFull(element, {
+				importFormat:throwingImporter,
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			table.on("dataLoadError", onError);
+			jest.spyOn(console, "error").mockImplementation(() => {});
+
+			jest.useFakeTimers();
+
+			let result = table.setData("name,age\nJohn,25").then(() => "settled");
+
+			//run importData's 10 ms timer
+			jest.advanceTimersByTime(10);
+
+			expect(await result).toBe("settled");
+			expect(onError).toHaveBeenCalledTimes(1);
+			expect(onError.mock.calls[0][0]).toBe(failure);
+		}, 1000);
+
+		test('rejects table.import and fires importError', async function(){
+			let element = document.createElement("div");
+			let onError = jest.fn();
+
+			table = new TabulatorFull(element, {
+				autoColumns:true
+			});
+
+			await new Promise(resolve => table.on("tableBuilt", resolve));
+
+			table.on("importError", onError);
+			jest.spyOn(table.modules.import, "pickFile").mockResolvedValue("name,age\nJohn,25");
+			jest.spyOn(console, "error").mockImplementation(() => {});
+
+			jest.useFakeTimers();
+
+			let result = table.import(throwingImporter, ".csv").then(
+				() => ({resolved:true}),
+				(err) => ({err})
+			);
+
+			//let the file pick settle, then run importData's 10 ms timer
+			await Promise.resolve();
+			await Promise.resolve();
+			jest.advanceTimersByTime(10);
+
+			expect(await result).toEqual({err:failure});
+			expect(onError).toHaveBeenCalledTimes(1);
+		}, 1000);
+	});
 });

@@ -155,7 +155,13 @@ export default class Import extends Module{
 		
 		return new Promise((resolve, reject) => {
 			setTimeout(() => {
-				data = importer.call(this.table, fileContents);
+				//a throw inside the timer would leave the promise pending and skip the error handlers
+				try{
+					data = importer.call(this.table, fileContents);
+				}catch(err){
+					reject(err);
+					return;
+				}
 				
 				if(data instanceof Promise){
 					resolve(data);
