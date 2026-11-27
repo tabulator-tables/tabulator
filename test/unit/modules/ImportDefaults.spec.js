@@ -41,10 +41,13 @@ describe('Import defaults', function(){
 			expect(csv("b,c\na,\n")).toEqual([["b", "c"], ["a", ""]]);
 		});
 
-		// RFC 4180 counts two fields in "a,". The parser creates a field when it reads the next
-		// character, so at the end of the input the empty last field is never created.
-		test.failing('keeps an empty field at the end of the last row with no new line', function(){
+		// RFC 4180 counts two fields in "a,".
+		test('keeps an empty field at the end of the last row with no new line', function(){
 			expect(csv("b,c\na,")).toEqual([["b", "c"], ["a", ""]]);
+			expect(csv("a,")).toEqual([["a", ""]]);
+			expect(csv("a,,")).toEqual([["a", "", ""]]);
+			expect(csv(",")).toEqual([["", ""]]);
+			expect(csv('"a",')).toEqual([["a", ""]]);
 		});
 
 		test('keeps a quoted empty field at the end of a row', function(){
@@ -68,6 +71,7 @@ describe('Import defaults', function(){
 
 		test('reads to the end of input when a quote is left open', function(){
 			expect(csv('a,"b,c\nd')).toEqual([["a", "b,c\nd"]]);
+			expect(csv('a,"b,')).toEqual([["a", "b,"]]);
 		});
 	});
 

@@ -57,5 +57,10 @@ export default function(input){
 		data[row][col] += char;
 	}
 
+	//Empty last field when the input ends with a comma outside quotes (RFC 4180: "a," has two fields)
+	if(!inQuote && input[input.length - 1] == ","){
+		data[row][col] = "";
+	}
+
 	return data;
 }
