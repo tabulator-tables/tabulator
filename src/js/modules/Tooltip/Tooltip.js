@@ -72,7 +72,7 @@ export default class Tooltip extends Module{
 	}
 	
 	loadTooltip(e, component, tooltip){
-		var contentsEl, renderedCallback, coords;
+		var contentsEl, renderedCallback, coords, unbind;
 
 		function onRendered(callback){
 			renderedCallback = callback;
@@ -92,7 +92,9 @@ export default class Tooltip extends Module{
 					tooltip = component.value;
 				}else{
 					if(component.definition.field){
-						this.langBind("columns|" + component.definition.field, (value) => {
+						//the binding lives as long as the tooltip is shown
+						// https://github.com/tabulator-tables/tabulator/issues/5028
+						unbind = this.langBind("columns|" + component.definition.field, (value) => {
 							contentsEl.innerHTML = tooltip = value || component.definition.title;
 						});
 					}else{
@@ -120,9 +122,15 @@ export default class Tooltip extends Module{
 			this.popupInstance.show(coords.x + 15, coords.y + 15).hideOnBlur(() => {
 				this.dispatchExternal("TooltipClosed", component.getComponent());
 				this.popupInstance = null;
+
+				if(unbind){
+					unbind();
+				}
 			});
 			
 			this.dispatchExternal("TooltipOpened", component.getComponent());
+		}else if(unbind){
+			unbind();
 		}
 	}
 }

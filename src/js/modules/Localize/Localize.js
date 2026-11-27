@@ -162,7 +162,7 @@ export default class Localize extends Module{
 		return root;
 	}
 
-	//set update binding
+	//set update binding, returns a function that removes it
 	bind(path, callback){
 		if(!this.bindings[path]){
 			this.bindings[path] = [];
@@ -171,6 +171,15 @@ export default class Localize extends Module{
 		this.bindings[path].push(callback);
 
 		callback(this.getText(path), this.lang);
+
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		return () => {
+			var index = this.bindings[path].indexOf(callback);
+
+			if(index > -1){
+				this.bindings[path].splice(index, 1);
+			}
+		};
 	}
 
 	//iterate through bindings and trigger updates

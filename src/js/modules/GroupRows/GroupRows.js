@@ -12,6 +12,7 @@ export default class GroupRows extends Module{
 		this.groupIDLookups = false; //enable table grouping and set field to group by
 		this.startOpen = [function(){return false;}]; //starting state of group
 		this.headerGenerator = [function(){return "";}];
+		this.headerUnbind = null; //removes the localization binding of the default header
 		this.groupList = []; //ordered list of groups
 		this.allowedValues = false;
 		this.groups = {}; //hold row groups
@@ -87,6 +88,12 @@ export default class GroupRows extends Module{
 	}
 
 	configureGroupSetup(){
+		// https://github.com/tabulator-tables/tabulator/issues/5028
+		if(this.headerUnbind){
+			this.headerUnbind();
+			this.headerUnbind = null;
+		}
+
 		if(this.table.options.groupBy){
 			var groupBy = this.table.options.groupBy,
 			startOpen = this.table.options.groupStartOpen,
@@ -101,11 +108,15 @@ export default class GroupRows extends Module{
 			this.headerGenerator = [function(){return "";}];
 			this.startOpen = [function(){return false;}]; //starting state of group
 			
-			this.langBind("groups|item", (langValue, lang) => {
-				this.headerGenerator[0] = (value, count, data) => { //header layout function
-					return (typeof value === "undefined" ? "" : value) + "<span>(" + count + " " + ((count === 1) ? langValue : lang.groups.items) + ")</span>";
-				};
-			});
+			//only the default header follows the locale, a custom one is never overwritten
+			// https://github.com/tabulator-tables/tabulator/issues/4720
+			if(!groupHeader){
+				this.headerUnbind = this.langBind("groups|item", (langValue, lang) => {
+					this.headerGenerator[0] = (value, count, data) => { //header layout function
+						return (typeof value === "undefined" ? "" : value) + "<span>(" + count + " " + ((count === 1) ? langValue : lang.groups.items) + ")</span>";
+					};
+				});
+			}
 			
 			this.groupIDLookups = [];
 			

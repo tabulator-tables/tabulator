@@ -16,6 +16,7 @@ export default class ResponsiveLayout extends Module{
 		this.collapseFormatter = [];
 		this.collapseStartOpen = true;
 		this.collapseHandleColumn = false;
+		this.collapseBindings = null; //localization bindings of the collapsed row being built
 
 		this.registerTableOption("responsiveLayout", false); //responsive layout flags
 		this.registerTableOption("responsiveLayoutCollapseStartOpen", true); //start showing collapsed data
@@ -42,6 +43,7 @@ export default class ResponsiveLayout extends Module{
 				this.subscribe("row-data-changed", this.generateCollapsedRowContent.bind(this));
 				this.subscribe("row-init", this.initializeRow.bind(this));
 				this.subscribe("row-layout", this.layoutRow.bind(this));
+				this.subscribe("row-deleting", this.releaseCollapsedRowBindings.bind(this));
 			}
 		}
 	}
@@ -253,11 +255,26 @@ export default class ResponsiveLayout extends Module{
 
 			while(el.firstChild) el.removeChild(el.firstChild);
 
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			this.releaseCollapsedRowBindings(row);
+			this.collapseBindings = row.modules.responsiveLayout.bindings = [];
+
 			contents = this.collapseFormatter(this.generateCollapsedRowData(row));
+
+			this.collapseBindings = null;
+
 			if(contents){
 				el.appendChild(contents);
 			}
 			row.calcHeight(true);
+		}
+	}
+
+	//remove the localization bindings of a row's collapsed content
+	releaseCollapsedRowBindings(row){
+		if(row.modules.responsiveLayout && row.modules.responsiveLayout.bindings){
+			row.modules.responsiveLayout.bindings.forEach((unbind) => unbind());
+			row.modules.responsiveLayout.bindings = null;
 		}
 	}
 
@@ -321,7 +338,8 @@ export default class ResponsiveLayout extends Module{
 	}
 
 	formatCollapsedData(data){
-		var list = document.createElement("table");
+		var list = document.createElement("table"),
+		bindings = this.modules.responsiveLayout.collapseBindings || [];
 
 		data.forEach((item) => {
 			var row = document.createElement("tr");
@@ -332,9 +350,11 @@ export default class ResponsiveLayout extends Module{
 			var titleHighlight = document.createElement("strong");
 			titleData.appendChild(titleHighlight);
 			
-			this.modules.localize.bind("columns|" + item.field, function(text){
+			//released by the module when the row's collapsed content is rebuilt or the row deleted
+			// https://github.com/tabulator-tables/tabulator/issues/5028
+			bindings.push(this.modules.localize.bind("columns|" + item.field, function(text){
 				titleHighlight.innerHTML = text || item.title;
-			});
+			}));
 
 			if(item.value instanceof Node){
 				node_content = document.createElement("div");
